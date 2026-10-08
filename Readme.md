@@ -12,6 +12,7 @@ We are choosing Odin because:
  - It has inline assembly built in to the compiler (we might use this)
  - It has a large repository of easy to find [example code](https://pkg.odin-lang.org/examples)
  - It contains, in its standard library an [odin parser](https://pkg.odin-lang.org/core/odin/parser)
+ - It contains, in its standard library an easy to use [profiler](https://pkg.odin-lang.org/core/prof/spall)
  - It contains, in its standard library a high-performance multi-architecture [encoder/decoder/printer](https://pkg.odin-lang.org/core/rexcode)
  - It contains, in its vendor library (provided by the compiler), a high performance real time [physics simulation library](https://pkg.odin-lang.org/vendor/box3d)
  - It is soon to get to [v1.0](https://www.youtube.com/watch?v=dLPAqXi9In0)
