@@ -7,6 +7,7 @@ package simulator
 
 import "core:os"
 import "core:fmt"
+import "core:time"
 import "core:thread"
 import "core:reflect"
 import win "core:sys/windows"
@@ -21,11 +22,17 @@ SIMULATOR_VERSION :: SIMULATOR_VERSION_MAJOR + "." + SIMULATOR_VERSION_MINOR + "
 
 PAGE_SIZE :: 4096
 
+Simulator_Thread_Data :: struct {
+  mem: ^peripherals.Memory,
+  simArray: [^]peripherals.Sim_Data,
+}
+
 sim_thread_proc :: proc(rawdata: rawptr)
 {
   WRITE_WATCH_FLAG_RESET :: 0x01
 
-  mem := cast(^peripherals.Memory)rawdata
+  data := cast(^Simulator_Thread_Data)rawdata
+  mem := data.mem
 
   pageCount: uint = mem.platform.pageCount
   pageSize: u32 = ---
@@ -44,7 +51,7 @@ sim_thread_proc :: proc(rawdata: rawptr)
     // NOTE: This will get optimized to a right shift
     pageIdx := u32(pageOffset) / PAGE_SIZE
 
-    mem.handlers[pageIdx](mem)
+    mem.handlers[pageIdx](mem, data.simArray[pageIdx].this_ctx)
   }
 }
 
@@ -61,17 +68,11 @@ main :: proc()
   totalPageCount: u32 = 0
   mem: peripherals.Memory
 
-  handlerArray := peripherals.HandlerArray
-
-  for per, idx in peripherals.Types {
+  // gather memory info
+  for per in peripherals.Types {
     ti := type_info_of(per)
-
     pageCount := (u32(ti.size - 1) / sysInfo.dwPageSize) + 1
     totalPageCount += pageCount
-
-    for pageIdx: u32 = 0; pageIdx < pageCount; pageIdx += 1 {
-      append(&mem.handlers, handlerArray[idx])
-    }
 
     memTotalSize += u32(ti.size)
     fmt.printfln("%v size: %v; page count: %v",
@@ -99,11 +100,41 @@ main :: proc()
   fmt.printfln("Total page size: %v", totalPageCount * sysInfo.dwPageSize)
   fmt.printfln("Peripheral count: %v", len(peripherals.Types))
 
-  simThread := thread.create_and_start_with_data(
-    &mem,
+  simArray := peripherals.SimArray
+
+  // setup peripherals
+  for periph, idx in peripherals.Types {
+    ti := type_info_of(periph)
+    pageCount := (u32(ti.size - 1) / sysInfo.dwPageSize) + 1
+
+    simArray[idx].this_ctx = simArray[idx].setup(&mem)
+
+    for pageIdx: u32 = 0; pageIdx < pageCount; pageIdx += 1 {
+      append(&mem.handlers, simArray[idx].handler)
+      append(&mem.peripheral_contexts, simArray[idx].this_ctx)
+    }
+  }
+
+  sim_thread_data := Simulator_Thread_Data {
+    mem = &mem,
+    simArray = &simArray[0],
+  }
+
+  sim_thread := thread.create_and_start_with_data(
+    &sim_thread_data,
     sim_thread_proc,
     context,
   )
 
-  thread.join(simThread)
+  step_time := 10 * time.Microsecond
+
+  for {
+    for periph in simArray {
+      periph.step(&mem, periph.this_ctx, step_time)
+    }
+
+    // notify step has been done to someone?
+  }
+
+  thread.join(sim_thread)
 }

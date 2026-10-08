@@ -7,6 +7,51 @@ package peripherals
 
 /* NOTE: GPV (Global Programmer View) is alone 284KiB :( */
 
+import "core:time"
+
+/*
+Step function that will be called when doing a single step(), 
+whether it is a fixed step or a variable step
+
+Arguments:
+ - `rawctx`: will contain a ^Memory
+ - `this_rawctx`: will contain a rawptr returned from the function in `SetupFn`
+*/
+Step_Proc :: #type proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
+
+/*
+Setup function for a peripheral, will be called before the first step(),
+after allocating ^Memory
+
+Arguments:
+ - `rawctx`: will contain a ^Memory
+Returns:
+ - a rawptr to the memory required for StepFn
+*/
+Setup_Proc :: #type proc(rawctx: rawptr) -> rawptr
+
+/*
+Handles any change in the the pages the peripheral uses
+
+Arguments:
+ - `rawctx`: will contain a ^Memory
+ - `this_rawctx`: will contain a rawptr returned from the function in `SetupFn`
+
+ - TODO: What would I need? Wanna try out making one before deciding
+*/
+Handler_Proc :: proc(rawctx, this_rawctx: rawptr)
+
+/*
+Holds the function pointers necessary for simulating a peripheral
+*/
+Sim_Data :: struct {
+  setup: Setup_Proc,
+  step: Step_Proc,
+  handler: Handler_Proc,
+
+  this_ctx: rawptr,
+}
+
 Types :: [?]typeid {
   SCnSCB,
   SCB,
@@ -290,283 +335,283 @@ Types :: [?]typeid {
 /* Some peripherals might use more than a single page here, 
  * they won't be repeated but in Memory.handlers they will be
  */
-HandlerArray: []proc(rawctx: rawptr) : {
-  Stub_Handler, /* SCnSCB */
-  Stub_Handler, /* SCB */
-  Stub_Handler, /* SysTick */
-  Stub_Handler, /* NVIC */
-  Stub_Handler, /* ITM */
-  Stub_Handler, /* DWT */
-  Stub_Handler, /* TPI */
-  Stub_Handler, /* CoreDebug */
-  Stub_Handler, /* MPU */
-  Stub_Handler, /* FPU */
+SimArray :: [?]Sim_Data {
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SCnSCB */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SCB */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SysTick */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* NVIC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* ITM */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DWT */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TPI */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* CoreDebug */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MPU */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FPU */
   
-  Stub_Handler, /* TIM2 */
-  Stub_Handler, /* TIM3 */
-  Stub_Handler, /* TIM4 */
-  Stub_Handler, /* TIM5 */
-  Stub_Handler, /* TIM6 */
-  Stub_Handler, /* TIM7 */
-  Stub_Handler, /* TIM13 */
-  Stub_Handler, /* TIM14 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM13 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM14 */
   
-  Stub_Handler, /* VREFBUF */
-  Stub_Handler, /* RTC */
-  Stub_Handler, /* WWDG1 */
-  Stub_Handler, /* IWDG1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* VREFBUF */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RTC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* WWDG1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* IWDG1 */
   
-  Stub_Handler, /* SPI2 */
-  Stub_Handler, /* SPI3 */
-  Stub_Handler, /* SPI4 */
-  Stub_Handler, /* SPI5 */
-  Stub_Handler, /* SPI6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SPI2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SPI3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SPI4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SPI5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SPI6 */
   
-  Stub_Handler, /* USART2 */
-  Stub_Handler, /* USART3 */
-  Stub_Handler, /* USART6 */
-  Stub_Handler, /* USART10 */
-  Stub_Handler, /* UART7 */
-  Stub_Handler, /* UART8 */
-  Stub_Handler, /* UART9 */
-  Stub_Handler, /* CRS */
-  Stub_Handler, /* UART4 */
-  Stub_Handler, /* UART5 */
-  Stub_Handler, /* I2C1 */
-  Stub_Handler, /* I2C2 */
-  Stub_Handler, /* I2C3 */
-  Stub_Handler, /* I2C4 */
-  Stub_Handler, /* I2C5 */
-  Stub_Handler, /* FDCAN1 */
-  Stub_Handler, /* FDCAN2 */
-  Stub_Handler, /* FDCAN_CCU */
-  Stub_Handler, /* FDCAN3 */
-  Stub_Handler, /* TIM23 */
-  Stub_Handler, /* TIM24 */
-  Stub_Handler, /* CEC */
-  Stub_Handler, /* LPTIM1 */
-  Stub_Handler, /* PWR */
-  Stub_Handler, /* DAC1 */
-  Stub_Handler, /* LPUART1 */
-  Stub_Handler, /* SWPMI1 */
-  Stub_Handler, /* LPTIM4 */
-  Stub_Handler, /* LPTIM5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* USART2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* USART3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* USART6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* USART10 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* UART7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* UART8 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* UART9 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* CRS */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* UART4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* UART5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* I2C1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* I2C2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* I2C3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* I2C4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* I2C5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FDCAN1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FDCAN2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FDCAN_CCU */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FDCAN3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM23 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM24 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* CEC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* LPTIM1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* PWR */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DAC1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* LPUART1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SWPMI1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* LPTIM4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* LPTIM5 */
 
-  Stub_Handler, /* SYSCFG */
-  Stub_Handler, /* COMP12 */
-  Stub_Handler, /* COMP1 */
-  Stub_Handler, /* COMP2 */
-  Stub_Handler, /* COMP12_COMMON */
-  Stub_Handler, /* OPAMP */
-  Stub_Handler, /* OPAMP1 */
-  Stub_Handler, /* OPAMP2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SYSCFG */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* COMP12 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* COMP1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* COMP2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* COMP12_COMMON */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* OPAMP */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* OPAMP1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* OPAMP2 */
 
-  Stub_Handler, /* EXTI */
-  Stub_Handler, /* EXTI_D1 */
-  Stub_Handler, /* EXTI_D2 */
-  Stub_Handler, /* TIM1 */
-  Stub_Handler, /* SPI1 */
-  Stub_Handler, /* TIM8 */
-  Stub_Handler, /* USART1 */
-  Stub_Handler, /* TIM12 */
-  Stub_Handler, /* TIM15 */
-  Stub_Handler, /* TIM16 */
-  Stub_Handler, /* TIM17 */
-  Stub_Handler, /* SAI1 */
-  Stub_Handler, /* SAI1_Block_A */
-  Stub_Handler, /* SAI1_Block_B */
-  Stub_Handler, /* SAI4 */
-  Stub_Handler, /* SAI4_Block_A */
-  Stub_Handler, /* SAI4_Block_B */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* EXTI */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* EXTI_D1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* EXTI_D2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SPI1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM8 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* USART1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM12 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM15 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM16 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* TIM17 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SAI1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SAI1_Block_A */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SAI1_Block_B */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SAI4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SAI4_Block_A */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SAI4_Block_B */
 
-  Stub_Handler, /* SPDIFRX */
-  Stub_Handler, /* DFSDM1_Channel0 */
-  Stub_Handler, /* DFSDM1_Channel1 */
-  Stub_Handler, /* DFSDM1_Channel2 */
-  Stub_Handler, /* DFSDM1_Channel3 */
-  Stub_Handler, /* DFSDM1_Channel4 */
-  Stub_Handler, /* DFSDM1_Channel5 */
-  Stub_Handler, /* DFSDM1_Channel6 */
-  Stub_Handler, /* DFSDM1_Channel7 */
-  Stub_Handler, /* DFSDM1_Filter0 */
-  Stub_Handler, /* DFSDM1_Filter1 */
-  Stub_Handler, /* DFSDM1_Filter2 */
-  Stub_Handler, /* DFSDM1_Filter3 */
-  Stub_Handler, /* DMA2D */
-  Stub_Handler, /* DCMI */
-  Stub_Handler, /* PSSI */
-  Stub_Handler, /* RCC */
-  Stub_Handler, /* FLASH */
-  Stub_Handler, /* CRC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SPDIFRX */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Channel7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Filter0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Filter1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Filter2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DFSDM1_Filter3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2D */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DCMI */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* PSSI */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RCC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FLASH */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* CRC */
 
-  Stub_Handler, /* GPIOA */
-  Stub_Handler, /* GPIOB */
-  Stub_Handler, /* GPIOC */
-  Stub_Handler, /* GPIOD */
-  Stub_Handler, /* GPIOE */
-  Stub_Handler, /* GPIOF */
-  Stub_Handler, /* GPIOG */
-  Stub_Handler, /* GPIOH */
-  Stub_Handler, /* GPIOJ */
-  Stub_Handler, /* GPIOK */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOA */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOB */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOD */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOE */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOF */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOG */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOH */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOJ */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOK */
 
-  Stub_Handler, /* ADC1 */
-  Stub_Handler, /* ADC2 */
-  Stub_Handler, /* ADC3 */
-  Stub_Handler, /* ADC3_COMMON */
-  Stub_Handler, /* ADC12_COMMON */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* ADC1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* ADC2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* ADC3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* ADC3_COMMON */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* ADC12_COMMON */
 
-  Stub_Handler, /* RNG */
-  Stub_Handler, /* SDMMC2 */
-  Stub_Handler, /* DLYB_SDMMC2 */
-  Stub_Handler, /* FMAC */
-  Stub_Handler, /* CORDIC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RNG */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SDMMC2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DLYB_SDMMC2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FMAC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* CORDIC */
 
-  Stub_Handler, /* BDMA */
-  Stub_Handler, /* BDMA_Channel0 */
-  Stub_Handler, /* BDMA_Channel1 */
-  Stub_Handler, /* BDMA_Channel2 */
-  Stub_Handler, /* BDMA_Channel3 */
-  Stub_Handler, /* BDMA_Channel4 */
-  Stub_Handler, /* BDMA_Channel5 */
-  Stub_Handler, /* BDMA_Channel6 */
-  Stub_Handler, /* BDMA_Channel7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* BDMA_Channel7 */
 
-  Stub_Handler, /* RAMECC1 */
-  Stub_Handler, /* RAMECC1_Monitor1 */
-  Stub_Handler, /* RAMECC1_Monitor2 */
-  Stub_Handler, /* RAMECC1_Monitor3 */
-  Stub_Handler, /* RAMECC1_Monitor4 */
-  Stub_Handler, /* RAMECC1_Monitor5 */
-  Stub_Handler, /* RAMECC1_Monitor6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC1_Monitor1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC1_Monitor2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC1_Monitor3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC1_Monitor4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC1_Monitor5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC1_Monitor6 */
 
-  Stub_Handler, /* RAMECC2 */
-  Stub_Handler, /* RAMECC2_Monitor1 */
-  Stub_Handler, /* RAMECC2_Monitor2 */
-  Stub_Handler, /* RAMECC2_Monitor3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC2_Monitor1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC2_Monitor2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC2_Monitor3 */
 
-  Stub_Handler, /* RAMECC3 */
-  Stub_Handler, /* RAMECC3_Monitor1 */
-  Stub_Handler, /* RAMECC3_Monitor2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC3_Monitor1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* RAMECC3_Monitor2 */
 
-  Stub_Handler, /* DMAMUX2 */
-  Stub_Handler, /* DMAMUX2_Channel0 */
-  Stub_Handler, /* DMAMUX2_Channel1 */
-  Stub_Handler, /* DMAMUX2_Channel2 */
-  Stub_Handler, /* DMAMUX2_Channel3 */
-  Stub_Handler, /* DMAMUX2_Channel4 */
-  Stub_Handler, /* DMAMUX2_Channel5 */
-  Stub_Handler, /* DMAMUX2_Channel6 */
-  Stub_Handler, /* DMAMUX2_Channel7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_Channel7 */
 
-  Stub_Handler, /* DMAMUX2_RequestGenerator0 */
-  Stub_Handler, /* DMAMUX2_RequestGenerator1 */
-  Stub_Handler, /* DMAMUX2_RequestGenerator2 */
-  Stub_Handler, /* DMAMUX2_RequestGenerator3 */
-  Stub_Handler, /* DMAMUX2_RequestGenerator4 */
-  Stub_Handler, /* DMAMUX2_RequestGenerator5 */
-  Stub_Handler, /* DMAMUX2_RequestGenerator6 */
-  Stub_Handler, /* DMAMUX2_RequestGenerator7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenerator7 */
 
-  Stub_Handler, /* DMAMUX2_ChannelStatus */
-  Stub_Handler, /* DMAMUX2_RequestGenStatus */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_ChannelStatus */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX2_RequestGenStatus */
 
-  Stub_Handler, /* DMA2 */
-  Stub_Handler, /* DMA2_Stream0 */
-  Stub_Handler, /* DMA2_Stream1 */
-  Stub_Handler, /* DMA2_Stream2 */
-  Stub_Handler, /* DMA2_Stream3 */
-  Stub_Handler, /* DMA2_Stream4 */
-  Stub_Handler, /* DMA2_Stream5 */
-  Stub_Handler, /* DMA2_Stream6 */
-  Stub_Handler, /* DMA2_Stream7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2_Stream7 */
 
-  Stub_Handler, /* DMA1 */
-  Stub_Handler, /* DMA1_Stream0 */
-  Stub_Handler, /* DMA1_Stream1 */
-  Stub_Handler, /* DMA1_Stream2 */
-  Stub_Handler, /* DMA1_Stream3 */
-  Stub_Handler, /* DMA1_Stream4 */
-  Stub_Handler, /* DMA1_Stream5 */
-  Stub_Handler, /* DMA1_Stream6 */
-  Stub_Handler, /* DMA1_Stream7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA1_Stream7 */
 
-  Stub_Handler, /* DMAMUX1 */
-  Stub_Handler, /* DMAMUX1_Channel0 */
-  Stub_Handler, /* DMAMUX1_Channel1 */
-  Stub_Handler, /* DMAMUX1_Channel2 */
-  Stub_Handler, /* DMAMUX1_Channel3 */
-  Stub_Handler, /* DMAMUX1_Channel4 */
-  Stub_Handler, /* DMAMUX1_Channel5 */
-  Stub_Handler, /* DMAMUX1_Channel6 */
-  Stub_Handler, /* DMAMUX1_Channel7 */
-  Stub_Handler, /* DMAMUX1_Channel8 */
-  Stub_Handler, /* DMAMUX1_Channel9 */
-  Stub_Handler, /* DMAMUX1_Channel10 */
-  Stub_Handler, /* DMAMUX1_Channel11 */
-  Stub_Handler, /* DMAMUX1_Channel12 */
-  Stub_Handler, /* DMAMUX1_Channel13 */
-  Stub_Handler, /* DMAMUX1_Channel14 */
-  Stub_Handler, /* DMAMUX1_Channel15 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel8 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel9 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel10 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel11 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel12 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel13 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel14 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_Channel15 */
 
-  Stub_Handler, /* DMAMUX1_RequestGenerator0 */
-  Stub_Handler, /* DMAMUX1_RequestGenerator1 */
-  Stub_Handler, /* DMAMUX1_RequestGenerator2 */
-  Stub_Handler, /* DMAMUX1_RequestGenerator3 */
-  Stub_Handler, /* DMAMUX1_RequestGenerator4 */
-  Stub_Handler, /* DMAMUX1_RequestGenerator5 */
-  Stub_Handler, /* DMAMUX1_RequestGenerator6 */
-  Stub_Handler, /* DMAMUX1_RequestGenerator7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenerator7 */
 
-  Stub_Handler, /* DMAMUX1_ChannelStatus */
-  Stub_Handler, /* DMAMUX1_RequestGenStatus */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_ChannelStatus */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DMAMUX1_RequestGenStatus */
 
-  Stub_Handler, /* FMC_Bank1_R */
-  Stub_Handler, /* FMC_Bank1E_R */
-  Stub_Handler, /* FMC_Bank2_R */
-  Stub_Handler, /* FMC_Bank3_R */
-  Stub_Handler, /* FMC_Bank5_6_R */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FMC_Bank1_R */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FMC_Bank1E_R */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FMC_Bank2_R */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FMC_Bank3_R */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* FMC_Bank5_6_R */
 
-  Stub_Handler, /* OCTOSPI1 */
-  Stub_Handler, /* DLYB_OCTOSPI1 */
-  Stub_Handler, /* OCTOSPI2 */
-  Stub_Handler, /* DLYB_OCTOSPI2 */
-  Stub_Handler, /* OCTOSPIM */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* OCTOSPI1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DLYB_OCTOSPI1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* OCTOSPI2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DLYB_OCTOSPI2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* OCTOSPIM */
 
-  Stub_Handler, /* SDMMC1 */
-  Stub_Handler, /* DLYB_SDMMC1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* SDMMC1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DLYB_SDMMC1 */
 
-  Stub_Handler, /* DBGMCU */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* DBGMCU */
 
-  Stub_Handler, /* HSEM */
-  Stub_Handler, /* HSEM_COMMON */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* HSEM */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* HSEM_COMMON */
 
-  Stub_Handler, /* LTDC */
-  Stub_Handler, /* LTDC_Layer1 */
-  Stub_Handler, /* LTDC_Layer2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* LTDC */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* LTDC_Layer1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* LTDC_Layer2 */
 
-  Stub_Handler, /* MDIOS */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDIOS */
 
-  Stub_Handler, /* ETH */
-  Stub_Handler, /* MDMA */
-  Stub_Handler, /* MDMA_Channel0 */
-  Stub_Handler, /* MDMA_Channel1 */
-  Stub_Handler, /* MDMA_Channel2 */
-  Stub_Handler, /* MDMA_Channel3 */
-  Stub_Handler, /* MDMA_Channel4 */
-  Stub_Handler, /* MDMA_Channel5 */
-  Stub_Handler, /* MDMA_Channel6 */
-  Stub_Handler, /* MDMA_Channel7 */
-  Stub_Handler, /* MDMA_Channel8 */
-  Stub_Handler, /* MDMA_Channel9 */
-  Stub_Handler, /* MDMA_Channel10 */
-  Stub_Handler, /* MDMA_Channel11 */
-  Stub_Handler, /* MDMA_Channel12 */
-  Stub_Handler, /* MDMA_Channel13 */
-  Stub_Handler, /* MDMA_Channel14 */
-  Stub_Handler, /* MDMA_Channel15 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* ETH */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel0 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel1 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel2 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel3 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel4 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel5 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel6 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel7 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel8 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel9 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel10 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel11 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel12 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel13 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel14 */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* MDMA_Channel15 */
 
-  Stub_Handler, /* USB1_OTG_HS */
+  {Stub_setup, Stub_step, Stub_handler, nil}, /* USB1_OTG_HS */
 }
 
 Memory :: struct {
@@ -576,7 +621,8 @@ Memory :: struct {
   },
   platform: Memory_PlatformSpecific,
   // One handler per page (256 pages max, unless we use GPV)
-  handlers: [dynamic; 256]proc(rawctx: rawptr),
+  handlers: [dynamic; 256]Handler_Proc,
+  peripheral_contexts: [dynamic; 256]rawptr,
   base: rawptr,
 
   SCnSCB_base: rawptr,
