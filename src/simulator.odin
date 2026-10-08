@@ -9,6 +9,7 @@ import "core:os"
 import "core:fmt"
 import "core:time"
 import "core:thread"
+import "core:dynlib"
 // import "core:reflect"
 import win "core:sys/windows"
 
@@ -130,14 +131,38 @@ main :: proc()
     context,
   )
 
+  BOARD_DYNLIB :: "board" + dynlib.LIBRARY_FILE_EXTENSION
+  Board_API :: struct {
+    init: proc "c"(mem: ^Memory),
+    update: proc "c"(),
+
+    library: dynlib.Library,
+  }
+
+  board_api: Board_API = ---
+  count, ok := dynlib.initialize_symbols(&board, BOARD_DYNLIB, "Board", "library")
+  defer dynlib.unload_library(board_api.library)
+  fmt.printfln("%v symbols loaded from " + BOARD_DYNLIB + ".", count)
+  if !ok {
+    fmt.eprintfln("Could not load symbols from " + BOARD_DYNLIB + ": %v", 
+      dynlib.last_error())
+    os.exit(1)
+  }
+
   step_time := 10 * time.Microsecond
+
+  board_api.init(&mem)
+
+  /* step easy version: 
+   * the stepping is done by calling update() on the simulated board
+   */
 
   for {
     for periph in simArray {
       periph.step(&mem, periph.this_ctx, step_time)
     }
 
-    // notify step has been done to someone?
+    board_api.update()
   }
 
   thread.join(sim_thread)

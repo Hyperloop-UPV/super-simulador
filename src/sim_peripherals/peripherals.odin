@@ -615,16 +615,6 @@ SimArray :: [?]Sim_Data {
 }
 
 Memory :: struct {
-  ranges: [len(Types)]struct {
-    bot: rawptr,
-    top: rawptr,
-  },
-  platform: Memory_PlatformSpecific,
-  // One handler per page (256 pages max, unless we use GPV)
-  handlers: [dynamic; 256]Handler_Proc,
-  peripheral_contexts: [dynamic; 256]rawptr,
-  base: rawptr,
-
   using _: struct #raw_union {
     memories: [len(Types)]rawptr,
 
@@ -910,4 +900,15 @@ Memory :: struct {
       // GPV
     },
   },
+
+  /* NOTE: These are at the bottom because they don't need to be sent to the board */
+  ranges: [len(Types)]struct {
+    bot: rawptr,
+    top: rawptr,
+  },
+  platform: Memory_PlatformSpecific,
+  // One handler per page (256 pages max, unless we use GPV)
+  handlers: [dynamic; 256]Handler_Proc,
+  peripheral_contexts: [dynamic; 256]rawptr,
+  base: rawptr,
 }
