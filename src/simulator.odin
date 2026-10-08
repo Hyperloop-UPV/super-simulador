@@ -9,7 +9,7 @@ import "core:os"
 import "core:fmt"
 import "core:time"
 import "core:thread"
-import "core:reflect"
+// import "core:reflect"
 import win "core:sys/windows"
 
 //import platform "sim_platform"
@@ -75,9 +75,9 @@ main :: proc()
     totalPageCount += pageCount
 
     memTotalSize += u32(ti.size)
-    fmt.printfln("%v size: %v; page count: %v",
-      ti.variant.(reflect.Type_Info_Named).name,
-      ti.size, pageCount)
+    //fmt.printfln("%v size: %v; page count: %v",
+    //  ti.variant.(reflect.Type_Info_Named).name,
+    //  ti.size, pageCount)
   }
 
   mem.platform.pageCount = uint(totalPageCount)
@@ -103,9 +103,13 @@ main :: proc()
   simArray := peripherals.SimArray
 
   // setup peripherals
+  mem_current := mem.base
   for periph, idx in peripherals.Types {
     ti := type_info_of(periph)
     pageCount := (u32(ti.size - 1) / sysInfo.dwPageSize) + 1
+
+    mem.memories[idx] = mem_current
+    mem_current = rawptr(uintptr(mem_current) + uintptr(pageCount * PAGE_SIZE))
 
     simArray[idx].this_ctx = simArray[idx].setup(&mem)
 
