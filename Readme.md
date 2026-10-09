@@ -2,6 +2,32 @@
 
 This is a simulator. Not an emulator (yet).
 
+### Roadmap
+
+TBD. To see short term wanted changes, see `TODO.md`.
+
+### Building
+
+linux:
+```
+odin build src -out:sim
+```
+windows:
+```
+odin build src -out:sim.exe
+```
+
+### Source structure
+
+ - `simulator.odin`: contains main program for the simulator (only windows right now)
+ - `sim_platform`: contains any platform specific code needed for main program (`simulator.odin` will use this when it is made)
+ - `sim_peripherals`: contains all simulation for peripherals
+ - `sim_peripherals/core_cm7.odin`: contains definitions for cm7 core registers
+ - `sim_peripherals/stm32h723xx.odin`: contains definitions for stm32h723xx peripheral registers
+
+Extra info:
+ - `Changes.md`: lists changes that had to be made to make the simulated board code compile/run
+
 ### Reasoning for the language we are going to use
 We are choosing Odin because:
  - It is a systems programming language
