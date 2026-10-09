@@ -82,8 +82,8 @@ Systick_Context :: struct {
 
 SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
 {
-  mem := cast(^Memory)rawctx
-  systick := cast(^SysTick)mem.SysTick_base
+  memory := cast(^Memory)rawctx
+  systick := cast(^SysTick)memory.SysTick_base
   ctx := cast(^Systick_Context)this_rawctx
 
   if systick.CALIB != CALIB_VALUE {
@@ -104,12 +104,12 @@ SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
 
 SysTick_setup :: proc(rawctx: rawptr) -> rawptr
 {
-  mem := cast(^Memory)rawctx
-  systick := cast(^SysTick)mem.SysTick_base
+  memory := cast(^Memory)rawctx
+  systick := cast(^SysTick)memory.SysTick_base
 
   systick.CALIB = CALIB_VALUE
 
-  ctx := new(Systick_Context)
+  ctx := new(Systick_Context, memory.arena_allocator)
   ctx.last_val = 0
 
   return ctx

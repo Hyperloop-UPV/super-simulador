@@ -7,17 +7,21 @@ package peripherals
 
 /* NOTE: GPV (Global Programmer View) is alone 284KiB :( */
 
+import "core:mem"
 import "core:time"
+import "core:dynlib"
+import "core:mem/virtual"
 
 /*
-Step function that will be called when doing a single step(), 
-whether it is a fixed step or a variable step
+Handles any change in the the pages the peripheral uses
 
 Arguments:
  - `rawctx`: will contain a ^Memory
  - `this_rawctx`: will contain a rawptr returned from the function in `SetupFn`
+
+ - TODO: What would I need? Wanna try out making one before deciding
 */
-Step_Proc :: #type proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
+Handler_Proc :: proc(rawctx, this_rawctx: rawptr)
 
 /*
 Setup function for a peripheral, will be called before the first step(),
@@ -31,15 +35,14 @@ Returns:
 Setup_Proc :: #type proc(rawctx: rawptr) -> rawptr
 
 /*
-Handles any change in the the pages the peripheral uses
+Step function that will be called when doing a single step(), 
+whether it is a fixed step or a variable step
 
 Arguments:
  - `rawctx`: will contain a ^Memory
  - `this_rawctx`: will contain a rawptr returned from the function in `SetupFn`
-
- - TODO: What would I need? Wanna try out making one before deciding
 */
-Handler_Proc :: proc(rawctx, this_rawctx: rawptr)
+Step_Proc :: #type proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
 
 /*
 Holds the function pointers necessary for simulating a peripheral
@@ -901,14 +904,26 @@ Memory :: struct {
     },
   },
 
+  /* base address of 'arena', will be used in the board code as a base then offset for stuff
+   * like the SCB NVIC vector offset which is 32 bit, this way it can keep being 32 bit
+   * but it will be an offset to this base.
+   */
+  arena_base: rawptr,
+
   /* NOTE: These are at the bottom because they don't need to be sent to the board */
   ranges: [len(Types)]struct {
     bot: rawptr,
     top: rawptr,
   },
   platform: Memory_PlatformSpecific,
+  library: dynlib.Library,
   // One handler per page (256 pages max, unless we use GPV)
   handlers: [dynamic; 256]Handler_Proc,
   peripheral_contexts: [dynamic; 256]rawptr,
   base: rawptr,
+
+  // NOTE: The arena does not support freeing of individual elements,
+  //       it is purely for long-lived allocations
+  arena: virtual.Arena,
+  arena_allocator: mem.Allocator,
 }
