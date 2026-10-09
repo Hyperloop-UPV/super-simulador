@@ -135,7 +135,13 @@ SysTick_step :: proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
       systick.CTRL |= CTRL_COUNTFLAG_Offset
       systick.VAL = systick.LOAD
       if (systick.CTRL & CTRL_TICKINT_InterruptEnabled) != 0 {
-        // TODO: Call interrupt here, from NVIC
+        // NOTE: SysTick interrupt enable is not in NVIC (no need to enable it)
+        scb := cast(^SCB)mem.SCB_base
+
+        vector_base := uintptr(mem.arena_base) + uintptr(scb.VTOR)
+        vector_table := cast([^]#type proc "c"())(vector_base)
+
+        vector_table[SysTick_IRQn]()
       }
     }
   }
