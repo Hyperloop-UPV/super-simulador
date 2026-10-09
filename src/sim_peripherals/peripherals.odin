@@ -340,9 +340,9 @@ Types :: [?]typeid {
  */
 SimArray :: [?]Sim_Data {
   {Stub_setup, Stub_step, Stub_handler, nil}, /* SCnSCB */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* SCB */
+  {SCB_setup, SCB_step, SCB_handler, nil}, /* SCB */
   {SysTick_setup, SysTick_step, SysTick_handler, nil}, /* SysTick */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* NVIC */
+  {NVIC_setup, NVIC_step, NVIC_handler, nil}, /* NVIC */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* ITM */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* DWT */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* TPI */
@@ -911,10 +911,6 @@ Memory :: struct {
   arena_base: rawptr,
 
   /* NOTE: These are at the bottom because they don't need to be sent to the board */
-  ranges: [len(Types)]struct {
-    bot: rawptr,
-    top: rawptr,
-  },
   platform: Memory_PlatformSpecific,
   library: dynlib.Library,
   // One handler per page (256 pages max, unless we use GPV)

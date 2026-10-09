@@ -3,9 +3,9 @@
 
 #ifdef SIMULATOR
 
-#ifndef SCnSCB_BASE
-#error Must include this file _after_ any CMSIS or HAL files
-#endif
+//#ifndef SCnSCB_BASE
+//#error Must include this file _after_ any CMSIS or HAL files
+//#endif
 
 #undef SCnSCB_BASE
 #undef SCB_BASE

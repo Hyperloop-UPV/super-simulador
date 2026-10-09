@@ -78,6 +78,7 @@ import "core:time"
 @(private="file")
 Systick_Context :: struct {
   last_val: u32,
+  change_was_internal: bool,
 }
 
 SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
@@ -91,7 +92,7 @@ SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
     os.exit(1)
   }
 
-  if ctx.last_val != systick.VAL {
+  if (ctx.last_val != systick.VAL) && !ctx.change_was_internal {
     /* A write of any value clears the field to 0,
      * and also clears the CTRL.COUNTFLAG bit to 0
      */
@@ -100,6 +101,8 @@ SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
   }
 
   // TODO: enable/disable NVIC here when CTRL.TICKINT has been written to
+  ctx.last_val = systick.VAL
+  ctx.change_was_internal = false
 }
 
 SysTick_setup :: proc(rawctx: rawptr) -> rawptr
@@ -144,6 +147,8 @@ SysTick_step :: proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
         vector_table[SysTick_IRQn]()
       }
     }
+
+    ctx.change_was_internal = true
   }
 
   ctx.last_val = systick.VAL

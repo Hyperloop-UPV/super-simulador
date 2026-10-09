@@ -7,10 +7,10 @@ package simulator
 
 import "core:os"
 import "core:fmt"
-import "core:mem/virtual"
 import "core:time"
 import "core:thread"
 import "core:dynlib"
+import "core:mem/virtual"
 // import "core:reflect"
 import win "core:sys/windows"
 
@@ -36,24 +36,26 @@ sim_thread_proc :: proc(rawdata: rawptr)
   data := cast(^Simulator_Thread_Data)rawdata
   memory := data.memory
 
-  pageCount: uint = memory.platform.pageCount
-  pageSize: u32 = ---
-  win.GetWriteWatch(
-    WRITE_WATCH_FLAG_RESET,
-    memory.base,
-    memory.platform.totalMem,
-    &memory.platform.writeWatchRequestMem[0],
-    &pageCount,
-    &pageSize,
-  )
+  for {
+    pageCount: uint = memory.platform.pageCount
+    pageSize: u32 = ---
+    win.GetWriteWatch(
+      WRITE_WATCH_FLAG_RESET,
+      memory.base,
+      memory.platform.totalMem,
+      &memory.platform.writeWatchRequestMem[0],
+      &pageCount,
+      &pageSize,
+    )
+    
+    for idx: uint = 0; idx < pageCount; idx += 1 {
+      pageAddr: rawptr = memory.platform.writeWatchRequestMem[idx]
+      pageOffset := uintptr(pageAddr) - uintptr(memory.base)
+      // NOTE: This will get optimized to a right shift
+      pageIdx := u32(pageOffset) / PAGE_SIZE
 
-  for idx: uint = 0; idx < pageCount; idx += 1 {
-    pageAddr: rawptr = memory.platform.writeWatchRequestMem[idx]
-    pageOffset := uintptr(pageAddr) - uintptr(memory.base)
-    // NOTE: This will get optimized to a right shift
-    pageIdx := u32(pageOffset) / PAGE_SIZE
-
-    memory.handlers[pageIdx](memory, data.simArray[pageIdx].this_ctx)
+      memory.handlers[pageIdx](memory, data.simArray[pageIdx].this_ctx)
+    }
   }
 }
 
@@ -117,7 +119,7 @@ main :: proc()
 
   simArray := peripherals.SimArray
 
-  BOARD_DYNLIB :: "board" + dynlib.LIBRARY_FILE_EXTENSION
+  BOARD_DYNLIB :: "board." + dynlib.LIBRARY_FILE_EXTENSION
   Board_API :: struct {
     init: proc "c"(mem: ^peripherals.Memory),
     update: proc "c"(),
@@ -126,7 +128,7 @@ main :: proc()
   }
 
   board_api: Board_API = ---
-  count, ok := dynlib.initialize_symbols(&board_api, BOARD_DYNLIB, "Board", "library")
+  count, ok := dynlib.initialize_symbols(&board_api, BOARD_DYNLIB, "Board_", "library")
   defer dynlib.unload_library(board_api.library)
   fmt.printfln("%v symbols loaded from " + BOARD_DYNLIB + ".", count)
   memory.library = board_api.library
@@ -174,10 +176,15 @@ main :: proc()
 
   for {
     for periph in simArray {
-      periph.step(&memory, periph.this_ctx, step_time)
+      if periph.step != peripherals.Stub_step {
+        //fmt.printfln("Peripheral %v step", periph)
+        periph.step(&memory, periph.this_ctx, step_time)
+      }
     }
 
     board_api.update()
+
+    time.sleep(10*time.Millisecond)
   }
 
   thread.join(sim_thread)

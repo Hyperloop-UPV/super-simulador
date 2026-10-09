@@ -2134,7 +2134,7 @@ __STATIC_INLINE void NVIC_DecodePriority (uint32_t Priority, uint32_t PriorityGr
  */
 __STATIC_INLINE void __NVIC_SetVector(IRQn_Type IRQn, size_t vector)
 {
-  size_t vectors = (size_t)SCB->VTOR + Simulator_arena_base;
+  size_t vectors = (size_t)SCB->VTOR + (size_t)Simulator_arena_base;
   (*(int*) (vectors + (size_t)((int32_t)IRQn + NVIC_USER_IRQ_OFFSET) * sizeof(int*))) = vector;
   __DSB();
 }
@@ -2150,7 +2150,7 @@ __STATIC_INLINE void __NVIC_SetVector(IRQn_Type IRQn, size_t vector)
  */
 __STATIC_INLINE size_t __NVIC_GetVector(IRQn_Type IRQn)
 {
-  size_t vectors = (size_t)SCB->VTOR + Simulator_arena_base;
+  size_t vectors = (size_t)SCB->VTOR + (size_t)Simulator_arena_base;
   return (size_t)(* (int *) (vectors + (size_t)((int32_t)IRQn + NVIC_USER_IRQ_OFFSET) * sizeof(int*)));
 }
 
