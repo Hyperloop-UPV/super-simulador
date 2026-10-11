@@ -450,20 +450,20 @@ SimArray :: [?]Sim_Data {
   {Stub_setup, Stub_step, Stub_handler, nil}, /* DMA2D */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* DCMI */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* PSSI */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* RCC */
+  {RCC_setup, RCC_step, RCC_handler, nil}, /* RCC */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* FLASH */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* CRC */
 
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOA */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOB */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOC */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOD */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOE */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOF */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOG */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOH */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOJ */
-  {Stub_setup, Stub_step, Stub_handler, nil}, /* GPIOK */
+  {GPIOA_setup, GPIO_step, GPIO_handler, nil}, /* GPIOA */
+  {GPIOB_setup, GPIO_step, GPIO_handler, nil}, /* GPIOB */
+  {GPIOC_setup, GPIO_step, GPIO_handler, nil}, /* GPIOC */
+  {GPIOD_setup, GPIO_step, GPIO_handler, nil}, /* GPIOD */
+  {GPIOE_setup, GPIO_step, GPIO_handler, nil}, /* GPIOE */
+  {GPIOF_setup, GPIO_step, GPIO_handler, nil}, /* GPIOF */
+  {GPIOG_setup, GPIO_step, GPIO_handler, nil}, /* GPIOG */
+  {GPIOH_setup, GPIO_step, GPIO_handler, nil}, /* GPIOH */
+  {GPIOJ_setup, GPIO_step, GPIO_handler, nil}, /* GPIOJ */
+  {GPIOK_setup, GPIO_step, GPIO_handler, nil}, /* GPIOK */
 
   {Stub_setup, Stub_step, Stub_handler, nil}, /* ADC1 */
   {Stub_setup, Stub_step, Stub_handler, nil}, /* ADC2 */
