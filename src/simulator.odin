@@ -39,7 +39,7 @@ sim_thread_proc :: proc(rawdata: rawptr)
   for {
     pageCount: uint = memory.platform.pageCount
     pageSize: u32 = ---
-    win.GetWriteWatch(
+    status := win.GetWriteWatch(
       WRITE_WATCH_FLAG_RESET,
       memory.base,
       memory.platform.totalMem,
@@ -47,7 +47,12 @@ sim_thread_proc :: proc(rawdata: rawptr)
       &pageCount,
       &pageSize,
     )
-    
+
+    if !win.SUCCEEDED(status) {
+      fmt.eprintfln("Could not GetWriteWatch: %v", win.GetLastError())
+      continue
+    }
+
     for idx: uint = 0; idx < pageCount; idx += 1 {
       pageAddr: rawptr = memory.platform.writeWatchRequestMem[idx]
       pageOffset := uintptr(pageAddr) - uintptr(memory.base)
@@ -184,7 +189,7 @@ main :: proc()
 
     board_api.update()
 
-    time.sleep(10*time.Millisecond)
+    time.sleep(10*time.Microsecond)
   }
 
   thread.join(sim_thread)

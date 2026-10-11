@@ -8,6 +8,7 @@ package peripherals
 import "core:os"
 import "core:fmt"
 import "core:time"
+import "core:sync"
 
 /* NOTE: This SysTick implementation works at 10 microsecond precision,
  *       As you can see by the value of CALIB
@@ -100,7 +101,6 @@ SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
     systick.CTRL &= ~ u32(1 << CTRL_COUNTFLAG_Offset)
   }
 
-  // TODO: enable/disable NVIC here when CTRL.TICKINT has been written to
   ctx.last_val = systick.VAL
   ctx.change_was_internal = false
 }
@@ -126,17 +126,27 @@ SysTick_step :: proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
 
   if (systick.CTRL & CTRL_ENABLE_CounterEnabled) != 0 {
     // SysTick counter is enabled, update it by `step_time`
-    systick.VAL = u32(max(
+    new_systick_val := u32(max(
       i32(systick.VAL) - i32(step_time / SYSTICK_NANOS_TO_TICKS),
       0,
     ))
+
+    // NOTE: No need to sync or atomics here as long as this doesn't get reordered
+    ctx.change_was_internal = true
+    sync.atomic_thread_fence(sync.Atomic_Memory_Order.Release)
+    systick.VAL = new_systick_val
 
     if systick.VAL == 0 && systick.LOAD != 0 {
       /* A start value of 0 is possible, but has no effect because the SysTick
        * exception request and COUNTFLAG are activated when counting from 1 to 0.
        */
       systick.CTRL |= CTRL_COUNTFLAG_Offset
+
+      // NOTE: No need to sync or atomics here as long as this doesn't get reordered
+      ctx.change_was_internal = true
+      sync.atomic_thread_fence(sync.Atomic_Memory_Order.Release)
       systick.VAL = systick.LOAD
+
       if (systick.CTRL & CTRL_TICKINT_InterruptEnabled) != 0 {
         // NOTE: SysTick interrupt enable is not in NVIC (no need to enable it)
         scb := cast(^SCB)mem.SCB_base
@@ -147,8 +157,6 @@ SysTick_step :: proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
         vector_table[SysTick_IRQn]()
       }
     }
-
-    ctx.change_was_internal = true
   }
 
   ctx.last_val = systick.VAL

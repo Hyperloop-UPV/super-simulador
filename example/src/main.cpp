@@ -15,8 +15,8 @@ extern "C" void Board_init(void *mem)
 
   SysTick->CTRL &= ~SysTick_CTRL_CLKSOURCE_Msk;
 
-  // 100Hz, assume CALIB is correct
-  SysTick->LOAD = SysTick->CALIB*10000;
+  // assume CALIB is correct
+  SysTick->LOAD = SysTick->CALIB*100;
 
   SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
 
