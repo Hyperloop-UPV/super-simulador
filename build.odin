@@ -151,10 +151,10 @@ run_command :: proc(cmd: ..string) -> (ok: bool)
   }
 
   if len(stdout) != 0 {
-    log.info(string(stdout))
+    fmt.print(string(stdout))
   }
   if len(stderr) != 0 {
-    log.error(string(stderr))
+    fmt.eprint(string(stderr))
   }
 
   if state.exit_code != 0 {
@@ -168,7 +168,10 @@ run_command :: proc(cmd: ..string) -> (ok: bool)
 
 build_debug :: proc() -> bool
 {
-  run_command("odin", "build", "src", "-out:" + SIMULATOR_EXE, "-debug") or_return
+  run_command("odin", "build", "src", "-out:" + SIMULATOR_EXE, "-error-pos-style:unix",
+    "-debug",
+    "-sanitize:address",
+  ) or_return
   run_command(
     "gcc",
     "example/src/main.cpp",
@@ -177,12 +180,38 @@ build_debug :: proc() -> bool
     "-DSIMULATOR_BUILD",
     "-shared",
     "-o", "board." + dynlib.LIBRARY_FILE_EXTENSION,
-    "-ggdb",
     "-Wall", "-Wextra",
     "-I", "example/inc",
+    "-ggdb",
     "-Wl,--gc-sections",
     "-Wl,--export-all-symbols",
   ) or_return
+
+  return true
+}
+
+build_release :: proc() -> bool
+{
+  run_command("odin", "build", "src", "-out:" + SIMULATOR_EXE, "-error-pos-style:unix",
+    "-o:speed",
+    "-no-type-assert",
+    "-no-bounds-check",
+    "-show-timings",
+  ) or_return
+  run_command(
+    "gcc",
+    "example/src/main.cpp",
+    "example/src/system_stm32h7xx.c",
+    "-DSTM32H723xx",
+    "-DSIMULATOR_BUILD",
+    "-shared",
+    "-o", "board." + dynlib.LIBRARY_FILE_EXTENSION,
+    "-Wall", "-Wextra",
+    "-I", "example/inc",
+    "-O2",
+    "-Wl,--gc-sections",
+    "-Wl,--export-all-symbols",
+  )
 
   return true
 }
