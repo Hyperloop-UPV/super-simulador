@@ -1,6 +1,6 @@
 #include "simulator.h"
 
-#ifdef SIMULATOR
+#ifdef SIMULATOR_BUILD
 
 void *SCnSCB_BASE;
 void *SCB_BASE;
@@ -506,4 +506,4 @@ void Simulator_InitMemory(void *rawmem)
   Simulator_arena_base = mem->arena_base;
 }
 
-#endif // SIMULATOR
+#endif // SIMULATOR_BUILD

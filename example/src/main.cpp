@@ -5,7 +5,7 @@
 
 extern "C" void Board_init(void *mem)
 {
-#ifdef SIMULATOR
+#ifdef SIMULATOR_BUILD
   Simulator_InitMemory(mem);
 #else
   (void)mem;
@@ -29,7 +29,7 @@ extern "C" void Board_update(void)
   // do something here like toggle led or whatever?
 }
 
-#ifdef SIMULATOR
+#ifdef SIMULATOR_BUILD
 #include "stdio.h"
 #endif
 
@@ -38,7 +38,7 @@ extern "C" void SysTick_Handler(void)
 {
   // TODO: Toggle led here
 
-#ifdef SIMULATOR
+#ifdef SIMULATOR_BUILD
   static uint64_t n = 0;
   printf("[%llu] Systick handler got called!\n", n);
   n++;
@@ -46,7 +46,7 @@ extern "C" void SysTick_Handler(void)
 
 }
 
-#ifndef SIMULATOR
+#ifndef SIMULATOR_BUILD
 int main()
 {
   Board_init(0);

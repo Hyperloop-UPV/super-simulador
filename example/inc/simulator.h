@@ -1,7 +1,7 @@
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
 
-#ifdef SIMULATOR
+#ifdef SIMULATOR_BUILD
 
 //#ifndef SCnSCB_BASE
 //#error Must include this file _after_ any CMSIS or HAL files
@@ -788,5 +788,5 @@ struct Simulator_Memory {
 
 void Simulator_InitMemory(void *rawmem);
 
-#endif // SIMULATOR
+#endif // SIMULATOR_BUILD
 #endif // SIMULATOR_H

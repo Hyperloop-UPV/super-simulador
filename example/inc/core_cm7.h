@@ -37,7 +37,7 @@
  extern "C" {
 #endif
 
-#ifdef SIMULATOR
+#ifdef SIMULATOR_BUILD
 extern void *Simulator_arena_base;
 #else
 #define Simulator_arena_base 0

@@ -8,13 +8,20 @@ TBD. To see short term wanted changes, see `TODO.md`.
 
 ### Building
 
-linux:
 ```
-odin build src -out:sim
+odin run .
 ```
-windows:
+or alternatively, keep the build executable and run it later:
+
+on linux:
 ```
-odin build src -out:sim.exe
+odin build . -out:build
+./build
+```
+on windows:
+```
+odin build . -out:build.exe
+build
 ```
 
 ### Source structure
