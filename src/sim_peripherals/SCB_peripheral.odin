@@ -34,7 +34,7 @@ get_NVIC_interrupts_from_dynlib :: proc(mem: ^Memory, vector_table: [^]rawptr)
 {
   get_symbol :: dynlib.symbol_address
 
-  library := mem.library
+  library := mem.board_api.library
   found: bool
 
   vector_table[Reset_IRQn], found = get_symbol(library, "Reset_Handler")

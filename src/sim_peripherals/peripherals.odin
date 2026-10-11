@@ -55,6 +55,13 @@ Sim_Data :: struct {
   this_ctx: rawptr,
 }
 
+Board_API :: struct {
+  init: proc "c"(mem: ^Memory),
+  update: proc "c"(),
+
+  library: dynlib.Library,
+}
+
 Types :: [?]typeid {
   SCnSCB,
   SCB,
@@ -912,11 +919,12 @@ Memory :: struct {
 
   /* NOTE: These are at the bottom because they don't need to be sent to the board */
   platform: Memory_PlatformSpecific,
-  library: dynlib.Library,
+  board_api: Board_API,
   // One handler per page (256 pages max, unless we use GPV)
   handlers: [dynamic; 256]Handler_Proc,
   peripheral_contexts: [dynamic; 256]rawptr,
   base: rawptr,
+  simArray: []Sim_Data,
 
   // NOTE: The arena does not support freeing of individual elements,
   //       it is purely for long-lived allocations

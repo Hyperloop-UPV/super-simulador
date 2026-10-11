@@ -59,13 +59,6 @@ sim_thread_proc :: proc(rawdata: rawptr)
   }
 }
 
-Board_API :: struct {
-  init: proc "c"(mem: ^peripherals.Memory),
-  update: proc "c"(),
-
-  library: dynlib.Library,
-}
-
 gather_memory_info :: proc(memory: ^peripherals.Memory, pageSize: u32)
 {
   totalPageCount: u32 = 0
@@ -86,20 +79,6 @@ gather_memory_info :: proc(memory: ^peripherals.Memory, pageSize: u32)
   memory.platform.totalMem = uint(totalPageCount * pageSize)  
 }
 
-init_arena :: proc(memory: ^peripherals.Memory)
-{
-  // setup allocator for peripheral internal memory.
-  // 1 GB reserved but not committed size (virtual memory)
-  // 1 MB committed size ('physical' memory)
-  err := virtual.arena_init_static(&memory.arena)
-  if err != nil {
-    log.error("Could not allocate virtual arena for peripheral memory")
-    os.exit(1)
-  }
-  memory.arena_allocator = virtual.arena_allocator(&memory.arena)
-  memory.arena_base = memory.arena.curr_block.base
-}
-
 init_memory :: #force_inline proc(memory: ^peripherals.Memory, pageSize: u32)
 {
   gather_memory_info(memory, pageSize)
@@ -107,7 +86,6 @@ init_memory :: #force_inline proc(memory: ^peripherals.Memory, pageSize: u32)
     memory.platform.totalMem,
     pageSize,
   )
-  init_arena(memory)
 }
 
 destroy_memory :: proc(memory: ^peripherals.Memory)
@@ -121,11 +99,11 @@ destroy_memory :: proc(memory: ^peripherals.Memory)
 Params:
  - `dllpath_no_ext`: dynamic library file path without extension (the extension will be appended)
 */
-load_board_api :: proc(dllpath_no_ext: string) -> Board_API
+load_board_api :: proc(dllpath_no_ext: string) -> peripherals.Board_API
 {
   path := fmt.tprintf("%s." + dynlib.LIBRARY_FILE_EXTENSION, dllpath_no_ext)
 
-  board_api: Board_API
+  board_api: peripherals.Board_API
   count, ok := dynlib.initialize_symbols(&board_api, path, "Board_", "library")
   log.infof("%v symbols loaded from %s", count, path)
   if !ok {
@@ -137,27 +115,28 @@ load_board_api :: proc(dllpath_no_ext: string) -> Board_API
   return board_api
 }
 
-main :: proc()
+create_board :: proc(dllpath_no_ext: string, pageSize: u32) -> ^peripherals.Memory
 {
-  context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
-  defer custom_log.destroy_logger(context.logger)
-
-  memory: peripherals.Memory
-
-  pageSize := platform.get_page_size()
-  if pageSize != EXPECTED_PAGE_SIZE {
-    log.error("Page size is not 4096 Bytes")
+  // setup allocator for peripheral internal memory.
+  // 1 GB reserved but not committed size (virtual memory)
+  // 1 MB committed size ('physical' memory)
+  arena: virtual.Arena
+  err := virtual.arena_init_static(&arena)
+  if err != nil {
+    log.error("Could not allocate virtual arena for board memory")
     os.exit(1)
   }
 
-  init_memory(&memory, pageSize)
-  defer destroy_memory(&memory)
+  memory, _ := virtual.new(&arena, peripherals.Memory)
+  memory.arena = arena
+  memory.arena_allocator = virtual.arena_allocator(&memory.arena)
+  memory.arena_base = memory.arena.curr_block.base
 
-  simArray := peripherals.SimArray
-
-  board_api := load_board_api("board")
-  defer dynlib.unload_library(board_api.library)
-  memory.library = board_api.library
+  init_memory(memory, pageSize)
+  memory.board_api = load_board_api("board")
+  
+  simArrayConst := peripherals.SimArray
+  memory.simArray = make([]peripherals.Sim_Data, len(simArrayConst))
 
   // setup peripherals
   mem_current := memory.base
@@ -168,23 +147,48 @@ main :: proc()
     memory.memories[idx] = mem_current
     mem_current = rawptr(uintptr(mem_current) + uintptr(pageCount * pageSize))
 
-    simArray[idx].this_ctx = simArray[idx].setup(&memory)
+    memory.simArray[idx] = simArrayConst[idx]
+    memory.simArray[idx].this_ctx = memory.simArray[idx].setup(memory)
 
     for pageIdx: u32 = 0; pageIdx < pageCount; pageIdx += 1 {
-      append(&memory.handlers, simArray[idx].handler)
-      append(&memory.peripheral_contexts, simArray[idx].this_ctx)
+      append(&memory.handlers, memory.simArray[idx].handler)
+      append(&memory.peripheral_contexts, memory.simArray[idx].this_ctx)
     }
   }
 
-  cwd, _ := os.get_working_directory(context.temp_allocator)
-  log.infof("running from %s", cwd)
+  return memory
+}
+
+destroy_board :: proc(memory: ^peripherals.Memory)
+{
+  dynlib.unload_library(memory.board_api.library)
+
+  /* NOTE: This has to be last because `memory` is part of the arena */
+  destroy_memory(memory)
+}
+
+main :: proc()
+{
+  context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
+  defer custom_log.destroy_logger(context.logger)
+  
+  pageSize := platform.get_page_size()
+  if pageSize != EXPECTED_PAGE_SIZE {
+    log.error("Page size is not 4096 Bytes")
+    os.exit(1)
+  }
+
+  memory := create_board("board", pageSize)
+  defer destroy_board(memory)
+
   log.infof("Total page count: %v", memory.platform.pageCount)
   log.infof("Total page size: %v", memory.platform.totalMem)
   log.infof("Peripheral count: %v", len(peripherals.Types))
+  log.infof("Total used memory by board: %v Bytes", memory.arena.total_used)
 
   sim_thread_data := Simulator_Thread_Data {
-    memory = &memory,
-    simArray = &simArray[0],
+    memory = memory,
+    simArray = &memory.simArray[0],
   }
 
   sim_thread := thread.create_and_start_with_data(
@@ -196,21 +200,21 @@ main :: proc()
   /* --------------------------------------------- */
 
   step_time := 10 * time.Microsecond
-  board_api.init(&memory)
+  memory.board_api.init(memory)
 
   /* step easy version: 
    * the stepping is done by calling update() on the simulated board
    */
 
   for {
-    for periph in simArray {
+    for periph in memory.simArray {
       if periph.step != peripherals.Stub_step {
         //fmt.printfln("Peripheral %v step", periph)
-        periph.step(&memory, periph.this_ctx, step_time)
+        periph.step(memory, periph.this_ctx, step_time)
       }
     }
 
-    board_api.update()
+    memory.board_api.update()
 
     time.sleep(10*time.Microsecond)
   }
