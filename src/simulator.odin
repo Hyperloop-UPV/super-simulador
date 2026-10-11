@@ -7,6 +7,8 @@ package simulator
 
 import "core:os"
 import "core:fmt"
+import "core:log"
+import custom_log "logger"
 import "core:time"
 import "core:thread"
 import "core:dynlib"
@@ -91,7 +93,7 @@ init_arena :: proc(memory: ^peripherals.Memory)
   // 1 MB committed size ('physical' memory)
   err := virtual.arena_init_static(&memory.arena)
   if err != nil {
-    fmt.eprintln("Could not allocate virtual arena for peripheral memory")
+    log.error("Could not allocate virtual arena for peripheral memory")
     os.exit(1)
   }
   memory.arena_allocator = virtual.arena_allocator(&memory.arena)
@@ -125,9 +127,9 @@ load_board_api :: proc(dllpath_no_ext: string) -> Board_API
 
   board_api: Board_API
   count, ok := dynlib.initialize_symbols(&board_api, path, "Board_", "library")
-  fmt.printfln("%v symbols loaded from %s", count, path)
+  log.infof("%v symbols loaded from %s", count, path)
   if !ok {
-    fmt.eprintfln("Could not load symbols from %s: %v",
+    log.errorf("Could not load symbols from %s: %v",
       path, dynlib.last_error())
     os.exit(1)
   }
@@ -137,22 +139,19 @@ load_board_api :: proc(dllpath_no_ext: string) -> Board_API
 
 main :: proc()
 {
+  context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
+  defer custom_log.destroy_logger(context.logger)
+
   memory: peripherals.Memory
 
   pageSize := platform.get_page_size()
   if pageSize != EXPECTED_PAGE_SIZE {
-    fmt.eprintfln("[ERROR] Page size is not 4096 Bytes")
+    log.error("Page size is not 4096 Bytes")
     os.exit(1)
   }
 
   init_memory(&memory, pageSize)
   defer destroy_memory(&memory)
-
-  fmt.printfln("Total page count: %v", memory.platform.pageCount)
-  fmt.printfln("Total page size: %v", memory.platform.totalMem)
-  fmt.printfln("Peripheral count: %v", len(peripherals.Types))
-  cwd, _ := os.get_working_directory(context.temp_allocator)
-  fmt.printfln("running from %s", cwd)
 
   simArray := peripherals.SimArray
 
@@ -177,6 +176,12 @@ main :: proc()
     }
   }
 
+  cwd, _ := os.get_working_directory(context.temp_allocator)
+  log.infof("running from %s", cwd)
+  log.infof("Total page count: %v", memory.platform.pageCount)
+  log.infof("Total page size: %v", memory.platform.totalMem)
+  log.infof("Peripheral count: %v", len(peripherals.Types))
+
   sim_thread_data := Simulator_Thread_Data {
     memory = &memory,
     simArray = &simArray[0],
@@ -187,7 +192,6 @@ main :: proc()
     sim_thread_proc,
     context,
   )
-
 
   /* --------------------------------------------- */
 

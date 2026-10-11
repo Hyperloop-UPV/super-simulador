@@ -7,7 +7,7 @@
 package simulator_platform
 
 import "core:os"
-import "core:fmt"
+import "core:log"
 
 import win "core:sys/windows"
 
@@ -21,7 +21,7 @@ init_memory :: proc(totalMem: uint, pageSize: u32) -> rawptr
     win.PAGE_READWRITE,
   )
   if base == nil {
-    fmt.eprintfln("[Win32] Could not allocate memory for peripherals: %v", win.GetLastError())
+    log.errorf("[Win32] Could not allocate memory for peripherals: %v", win.GetLastError())
     os.exit(1)
   }
 
@@ -55,7 +55,7 @@ get_written_pages :: proc(base: rawptr, reqMem: ^rawptr, pageCount: ^uint, total
   )
 
   if !win.SUCCEEDED(status) {
-    fmt.eprintfln("Could not GetWriteWatch: %v", win.GetLastError())
+    log.errorf("Could not GetWriteWatch: %v", win.GetLastError())
     return
   }
 
