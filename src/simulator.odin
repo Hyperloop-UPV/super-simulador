@@ -184,7 +184,8 @@ main :: proc()
   log.infof("Total page count: %v", memory.platform.pageCount)
   log.infof("Total page size: %v", memory.platform.totalMem)
   log.infof("Peripheral count: %v", len(peripherals.Types))
-  log.infof("Total used memory by board: %v Bytes", memory.arena.total_used)
+  log.infof("Total used memory by board: %v Bytes",
+    memory.arena.total_used + memory.platform.totalMem)
 
   sim_thread_data := Simulator_Thread_Data {
     memory = memory,
