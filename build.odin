@@ -8,6 +8,7 @@ package build
 import "core:os"
 import "core:fmt"
 import "core:log"
+import "core:flags"
 import "core:dynlib"
 
 import custom_log "src/logger"
@@ -20,12 +21,24 @@ when ODIN_OS == .Windows {
   SIMULATOR_EXE :: SIMULATOR_NAME
 }
 
-run_command :: proc(cmd: ..string) -> (ok: bool)
+Build_Mode :: enum {
+  debug,
+  release,
+  /* release with debug info */
+  rel_debug,
+}
+
+Build_Options :: struct {
+  mode: Build_Mode `args:"pos=0" usage:"Build mode, can be debug, release or rel-debug for release with debug info"`,
+  disable_profiling: bool `usage:"Disable or enable profiling. Profiling is enabled by default"`,
+}
+
+run_command :: proc(cmd: []string) -> (ok: bool)
 {
   desc := os.Process_Desc{
-    command = cmd[:],
+    command = cmd,
   }
-  log.infof("Running %v", cmd[:])
+  log.infof("Running %v", cmd)
   state, stdout, stderr, err := os.process_exec(desc, context.temp_allocator)
   if err != nil {
     log.errorf("Could not start process %v: %v", cmd, err)
@@ -48,13 +61,23 @@ run_command :: proc(cmd: ..string) -> (ok: bool)
   return
 }
 
-build_debug :: proc() -> bool
+build :: proc(opt: Build_Options) -> bool
 {
-  run_command("odin", "build", "src", "-out:" + SIMULATOR_EXE, "-error-pos-style:unix",
-    "-debug",
-  ) or_return
-  run_command(
-    "gcc",
+  cmd: [dynamic; 256]string
+  append(&cmd, "odin", "build", "src", "-out:" + SIMULATOR_EXE, "-error-pos-style:unix")
+
+  if opt.mode == .debug || opt.mode == .rel_debug {
+    append(&cmd, "-debug")
+  }
+
+  if opt.mode == .release || opt.mode == .rel_debug {
+    append(&cmd, "-o:speed", "-no-type-assert", "-no-bounds-check")
+  }
+
+  run_command(cmd[:]) or_return
+  clear(&cmd)
+
+  append(&cmd, "gcc",
     "example/src/main.cpp",
     "example/src/system_stm32h7xx.c",
     "-DSTM32H723xx",
@@ -63,36 +86,20 @@ build_debug :: proc() -> bool
     "-o", "board." + dynlib.LIBRARY_FILE_EXTENSION,
     "-Wall", "-Wextra",
     "-I", "example/inc",
-    "-ggdb",
-    "-Wl,--gc-sections",
-    "-Wl,--export-all-symbols",
-  ) or_return
-
-  return true
-}
-
-build_release :: proc() -> bool
-{
-  run_command("odin", "build", "src", "-out:" + SIMULATOR_EXE, "-error-pos-style:unix",
-    "-o:speed",
-    "-no-type-assert",
-    "-no-bounds-check",
-    "-show-timings",
-  ) or_return
-  run_command(
-    "gcc",
-    "example/src/main.cpp",
-    "example/src/system_stm32h7xx.c",
-    "-DSTM32H723xx",
-    "-DSIMULATOR_BUILD",
-    "-shared",
-    "-o", "board." + dynlib.LIBRARY_FILE_EXTENSION,
-    "-Wall", "-Wextra",
-    "-I", "example/inc",
-    "-O2",
     "-Wl,--gc-sections",
     "-Wl,--export-all-symbols",
   )
+
+  if opt.mode == .debug || opt.mode == .rel_debug {
+    append(&cmd, "-ggdb")
+  }
+
+  if opt.mode == .release || opt.mode == .rel_debug {
+    append(&cmd, "-O2")
+  }
+
+  run_command(cmd[:]) or_return
+  clear(&cmd)
 
   return true
 }
@@ -102,7 +109,10 @@ main :: proc()
   context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
   defer custom_log.destroy_logger(context.logger)
 
-  if !build_debug() {
+  opt: Build_Options
+  flags.parse_or_exit(&opt, os.args, .Unix)
+
+  if !build(opt) {
     log.error("Build failed")
   }
 }
