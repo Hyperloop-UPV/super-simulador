@@ -8,13 +8,14 @@ package simulator
 import "core:os"
 import "core:fmt"
 import "core:log"
-import custom_log "logger"
 import "core:time"
 import "core:thread"
 import "core:dynlib"
 import "core:mem/virtual"
 // import "core:reflect"
 
+import custom_log "logger"
+import spall "spall_wrapper"
 import platform "sim_platform"
 import peripherals "sim_peripherals"
 
@@ -28,6 +29,7 @@ EXPECTED_PAGE_SIZE :: 4096
 Simulator_Thread_Data :: struct {
   memory: ^peripherals.Memory,
   simArray: [^]peripherals.Sim_Data,
+  shouldQuit: b32,
 }
 
 sim_thread_proc :: proc(rawdata: rawptr)
@@ -35,7 +37,19 @@ sim_thread_proc :: proc(rawdata: rawptr)
   data := cast(^Simulator_Thread_Data)rawdata
   memory := data.memory
 
+  if !spall.init_thread() {
+    log.errorf("Could not init profiling in %s", #procedure)
+    os.exit(1)
+  }
+  defer spall.deinit_thread()
+
   for {
+    spall.SCOPED_EVENT("Peripheral page write watch")
+
+    if data.shouldQuit {
+      break
+    }
+
     pageCount: uint = memory.platform.pageCount
     pageSize, ok := platform.get_written_pages(
       memory.base,
@@ -48,13 +62,17 @@ sim_thread_proc :: proc(rawdata: rawptr)
       continue
     }
 
-    for idx: uint = 0; idx < pageCount; idx += 1 {
-      pageAddr: rawptr = memory.platform.writeWatchRequestMem[idx]
-      pageOffset := uintptr(pageAddr) - uintptr(memory.base)
-      // NOTE: This will get optimized to a right shift
-      pageIdx := u32(pageOffset) / pageSize
-
-      memory.handlers[pageIdx](memory, data.simArray[pageIdx].this_ctx)
+    if pageCount > 0 {
+      spall.SCOPED_EVENT("Peripheral handle page writes")
+      
+      for idx: uint = 0; idx < pageCount; idx += 1 {
+        pageAddr: rawptr = memory.platform.writeWatchRequestMem[idx]
+        pageOffset := uintptr(pageAddr) - uintptr(memory.base)
+        // NOTE: This will get optimized to a right shift
+        pageIdx := u32(pageOffset) / pageSize
+        
+        memory.handlers[pageIdx](memory, data.simArray[pageIdx].this_ctx)
+      }
     }
   }
 }
@@ -169,9 +187,17 @@ destroy_board :: proc(memory: ^peripherals.Memory)
 
 main :: proc()
 {
+  if !spall.init("trace.spall") {
+    fmt.eprint("Could not init profiling")
+    os.exit(1)
+  }
+  defer spall.deinit()
+
+  spall._buffer_begin("Startup")
+
   context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
   defer custom_log.destroy_logger(context.logger)
-  
+
   pageSize := platform.get_page_size()
   if pageSize != EXPECTED_PAGE_SIZE {
     log.error("Page size is not 4096 Bytes")
@@ -192,6 +218,8 @@ main :: proc()
     simArray = &memory.simArray[0],
   }
 
+  spall._buffer_end() // "Startup"
+
   sim_thread := thread.create_and_start_with_data(
     &sim_thread_data,
     sim_thread_proc,
@@ -203,11 +231,17 @@ main :: proc()
   step_time := 10 * time.Microsecond
   memory.board_api.init(memory)
 
+  MAX_ITERATIONS :: 1_000_000
+
   /* step easy version: 
    * the stepping is done by calling update() on the simulated board
    */
 
+  it := 0
   for {
+    spall._buffer_begin("Board iteration")
+    spall._buffer_begin("Peripheral update")
+
     for periph in memory.simArray {
       if periph.step != peripherals.Stub_step {
         //fmt.printfln("Peripheral %v step", periph)
@@ -215,10 +249,23 @@ main :: proc()
       }
     }
 
+    spall._buffer_end() // "Peripheral update"
+
     memory.board_api.update()
 
+    spall._buffer_end() // "Board iteration"
+
     time.sleep(10*time.Microsecond)
+
+    when MAX_ITERATIONS != 0 {
+      it += 1
+      if it >= MAX_ITERATIONS {
+        break
+      }
+    }
   }
 
+  // wait until sim_thread quits 'voluntarily'
+  sim_thread_data.shouldQuit = true
   thread.join(sim_thread)
 }
