@@ -1,0 +1,27 @@
+#+vet style
+#+vet unused
+#+vet unused-variables
+#+vet unused-imports
+#+vet shadowing
+#+private package
+#+build !windows
+package simulator_platform
+
+UFFDIO_API :: 0xc018aa3f
+UFFDIO_REGISTER :: 0xc020aa00
+UFFDIO_WRITEPROTECT :: 0xc018aa06
+PAGEMAP_SCAN :: 0xc0606610
+
+UFFD_API :: 0xaa
+UFFDIO_WRITEPROTECT_MODE_WP :: 0x1
+UFFDIO_WRITEPROTECT_MODE_DONTWAKE :: 0x2
+UFFDIO_REGISTER_MODE_WP :: 0x2
+
+UFFD_USER_MODE_ONLY :: 0x1
+
+UFFD_FEATURE_WP_ASYNC :: 0x8000
+PAGE_IS_WPALLOWED :: 0x1
+PAGE_IS_WRITTEN :: 0x2
+PAGE_IS_PRESENT :: 0x8
+PM_SCAN_WP_MATCHING :: 0x1
+PM_SCAN_CHECK_WPASYNC :: 0x2

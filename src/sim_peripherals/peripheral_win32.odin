@@ -6,8 +6,7 @@
 #+build windows
 package peripherals
 
+PLATFORM_REQ_MULTIPLIER :: 1
+
 Memory_PlatformSpecific :: struct {
-  writeWatchRequestMem: [len(Types)]rawptr,
-  pageCount: uint,
-  totalMem: uint,
 }

@@ -32,6 +32,7 @@
 #define __CORE_CM7_H_GENERIC
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
  extern "C" {

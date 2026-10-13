@@ -33,10 +33,11 @@ Build_Options :: struct {
   disable_profiling: bool `usage:"Disable or enable profiling. Profiling is enabled by default"`,
 }
 
-run_command :: proc(cmd: []string) -> (ok: bool)
+run_command :: proc(cmd: []string, cwd := ".") -> (ok: bool)
 {
   desc := os.Process_Desc{
     command = cmd,
+    working_dir = cwd,
   }
   log.infof("Running %v", cmd)
   state, stdout, stderr, err := os.process_exec(desc, context.temp_allocator)
@@ -87,8 +88,13 @@ build :: proc(opt: Build_Options) -> bool
     "-Wall", "-Wextra",
     "-I", "example/inc",
     "-Wl,--gc-sections",
-    "-Wl,--export-all-symbols",
   )
+
+  when ODIN_OS == .Windows {
+    append(&cmd, "-Wl,--export-all-symbols")
+  } else {
+    append(&cmd, "-fPIC")
+  }
 
   if opt.mode == .debug || opt.mode == .rel_debug {
     append(&cmd, "-ggdb")
@@ -104,6 +110,27 @@ build :: proc(opt: Build_Options) -> bool
   return true
 }
 
+do_codegen :: proc() -> bool
+{
+  cmd := []string{
+    "gcc",
+    "ioctl_defs_linux.c",
+    "-o", "codegen",
+    "-Wall", "-Wextra",
+    "-Werror",
+  }
+
+  run_command(cmd, cwd = "codegen") or_return
+
+  cmd = []string{
+    "codegen/codegen",
+  }
+
+  run_command(cmd) or_return
+
+  return true
+}
+
 main :: proc()
 {
   context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
@@ -112,7 +139,13 @@ main :: proc()
   opt: Build_Options
   flags.parse_or_exit(&opt, os.args, .Unix)
 
+  if !do_codegen() {
+    log.error("Codegen failed")
+    os.exit(1)
+  }
+
   if !build(opt) {
     log.error("Build failed")
+    os.exit(1)
   }
 }

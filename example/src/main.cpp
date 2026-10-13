@@ -33,7 +33,7 @@ extern "C" void Board_init(void *mem)
 
   GPIOB->BSRR |= GPIO_BSRR_BS0 << pin;
 
-  for(volatile uint32_t i = 0; i < 1000'000; i++) {}
+  //for(volatile uint32_t i = 0; i < 1000'000; i++) {}
 
   GPIOB->BSRR |= GPIO_BSRR_BR0 << pin;
 

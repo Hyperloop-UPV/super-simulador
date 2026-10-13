@@ -1,0 +1,52 @@
+#include <unistd.h>
+#include <linux/userfaultfd.h>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+
+#include <stdio.h>
+
+int main()
+{
+  FILE *f = fopen("src/sim_platform/sim_platform_linux_ioctls.odin", "wb");
+
+  fprintf(f,
+    "#+vet style\n"
+    "#+vet unused\n"
+    "#+vet unused-variables\n"
+    "#+vet unused-imports\n"
+    "#+vet shadowing\n"
+    "#+private package\n"
+    "#+build !windows\n"
+    "package simulator_platform\n"
+    "\n"
+  );
+
+  fprintf(f, "UFFDIO_API :: 0x%lx\n", UFFDIO_API);
+  fprintf(f, "UFFDIO_REGISTER :: 0x%lx\n", UFFDIO_REGISTER);
+  fprintf(f, "UFFDIO_WRITEPROTECT :: 0x%lx\n", UFFDIO_WRITEPROTECT);
+  fprintf(f, "PAGEMAP_SCAN :: 0x%lx\n", PAGEMAP_SCAN);
+  
+  fprintf(f, "\n");
+  
+  fprintf(f, "UFFD_API :: 0x%llx\n", UFFD_API);
+  fprintf(f, "UFFDIO_WRITEPROTECT_MODE_WP :: 0x%llx\n", UFFDIO_WRITEPROTECT_MODE_WP);
+  fprintf(f, "UFFDIO_WRITEPROTECT_MODE_DONTWAKE :: 0x%llx\n", UFFDIO_WRITEPROTECT_MODE_DONTWAKE);
+  fprintf(f, "UFFDIO_REGISTER_MODE_WP :: 0x%llx\n", UFFDIO_REGISTER_MODE_WP);
+
+  fprintf(f, "\n");
+
+  fprintf(f, "UFFD_USER_MODE_ONLY :: 0x%x\n", UFFD_USER_MODE_ONLY);
+
+  fprintf(f, "\n");
+
+  fprintf(f, "UFFD_FEATURE_WP_ASYNC :: 0x%x\n", UFFD_FEATURE_WP_ASYNC);
+  fprintf(f, "PAGE_IS_WPALLOWED :: 0x%x\n", PAGE_IS_WPALLOWED);
+  fprintf(f, "PAGE_IS_WRITTEN :: 0x%x\n", PAGE_IS_WRITTEN);
+  fprintf(f, "PAGE_IS_PRESENT :: 0x%x\n", PAGE_IS_PRESENT);
+  fprintf(f, "PM_SCAN_WP_MATCHING :: 0x%x\n", PM_SCAN_WP_MATCHING);
+  fprintf(f, "PM_SCAN_CHECK_WPASYNC :: 0x%x\n", PM_SCAN_CHECK_WPASYNC);
+
+  fclose(f);
+
+  return 0;
+}

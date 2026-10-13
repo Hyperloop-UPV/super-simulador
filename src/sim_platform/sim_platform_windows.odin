@@ -33,17 +33,13 @@ destroy_memory :: proc(base: rawptr)
   win.VirtualFree(base, 0, win.MEM_RELEASE)
 }
 
-get_page_size :: proc() -> u32
-{
-  sysInfo: win.SYSTEM_INFO = ---
-  win.GetSystemInfo(&sysInfo)
-
-  return sysInfo.dwPageSize
-}
-
-get_written_pages :: proc(base: rawptr, reqMem: ^rawptr, pageCount: ^uint, totalMem: uint) -> (pageSize: u32, ok: bool)
+get_written_pages :: proc(base: rawptr, reqMem: [^]rawptr, pageCount: ^uint, totalMem: uint) -> bool
 {
   WRITE_WATCH_FLAG_RESET :: 0x01
+  
+  ok: bool
+  // pageSize is ignored since we already know it's 4096 on windows
+  pageSize: u32
 
   status := win.GetWriteWatch(
     WRITE_WATCH_FLAG_RESET,
@@ -56,9 +52,8 @@ get_written_pages :: proc(base: rawptr, reqMem: ^rawptr, pageCount: ^uint, total
 
   if !win.SUCCEEDED(status) {
     log.errorf("Could not GetWriteWatch: %v", win.GetLastError())
-    return
+    ok = false
   }
 
-  ok = true
-  return
+  return ok
 }

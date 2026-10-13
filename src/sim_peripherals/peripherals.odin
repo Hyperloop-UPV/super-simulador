@@ -918,7 +918,10 @@ Memory :: struct {
   arena_base: rawptr,
 
   /* NOTE: These are at the bottom because they don't need to be sent to the board */
-  platform: Memory_PlatformSpecific,
+  writeWatchRequestMem: [len(Types) * PLATFORM_REQ_MULTIPLIER]rawptr,
+  pageCount: uint,
+  totalMem: uint,
+
   board_api: Board_API,
   // One handler per page (256 pages max, unless we use GPV)
   handlers: [dynamic; 256]Handler_Proc,
