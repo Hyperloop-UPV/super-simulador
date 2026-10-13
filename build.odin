@@ -21,6 +21,8 @@ when ODIN_OS == .Windows {
   SIMULATOR_EXE :: SIMULATOR_NAME
 }
 
+OUTPUT_DIR :: #config(OUTPUT_DIR, "bin")
+
 Build_Mode :: enum {
   debug,
   release,
@@ -115,7 +117,7 @@ do_codegen :: proc() -> bool
   cmd := []string{
     "gcc",
     "ioctl_defs_linux.c",
-    "-o", "codegen",
+    "-o", "../bin/codegen",
     "-Wall", "-Wextra",
     "-Werror",
   }
@@ -123,7 +125,7 @@ do_codegen :: proc() -> bool
   run_command(cmd, cwd = "codegen") or_return
 
   cmd = []string{
-    "codegen/codegen",
+    "bin/codegen",
   }
 
   run_command(cmd) or_return
@@ -138,6 +140,8 @@ main :: proc()
 
   opt: Build_Options
   flags.parse_or_exit(&opt, os.args, .Unix)
+
+  os.mkdir(OUTPUT_DIR)
 
   if !do_codegen() {
     log.error("Codegen failed")
