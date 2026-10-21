@@ -4,8 +4,11 @@
        {`stub_peripheral.odin`, ...} in a module to handle all peripherals
  - [ ] `__DSB()` (data synchronization barrier) stops simulated board until a full iteration of write detection in simulator happens
 
- - [ ] Event queue for micro simulators (simulators that might log data, etc.) example: GPIOx pin value changes, SysTick interrupts, etc.
+## micro simulators (simulators that might log data, etc.)
+ - [ ] Calling micro simulators from super simulator (core simulator). Load dll etc.
+ - [ ] Event queue for micro simulators. Example: GPIOx pin value changes, SysTick interrupts, etc.
  - [ ] Subscribing to events to avoid sending unwanted events ?
+ - [ ] Micro simulator example
 
 ## Peripherals
  - [ ] Finish SCB peripheral (only VTOR register is usable)
