@@ -110,6 +110,10 @@ init_memory :: #force_inline proc(memory: ^peripherals.Memory)
 {
   gather_memory_info(memory)
   memory.base = platform.init_memory(memory.totalMem)
+  memory.writeWatchRequestMem = make([]rawptr,
+    memory.pageCount * peripherals.PLATFORM_REQ_MULTIPLIER,
+    memory.arena_allocator,
+  )
 }
 
 destroy_memory :: proc(memory: ^peripherals.Memory)

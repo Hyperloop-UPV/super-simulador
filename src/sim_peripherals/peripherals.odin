@@ -359,8 +359,8 @@ Memory :: struct {
   arena_base: rawptr,
 
   /* NOTE: These are at the bottom because they don't need to be sent to the board */
-  //ERROR HERE PLEASE: THIS SHOULD NOT BE PERIPHERAL_COUNT SIZE BUT PAGE_COUNT SIZE
-  writeWatchRequestMem: [mcu.PERIPHERAL_COUNT * PLATFORM_REQ_MULTIPLIER]rawptr,
+  // Holds pageCount * PLATFORM_REQ_MULTIPLIER items max.
+  writeWatchRequestMem: []rawptr,
   pageCount: uint,
   totalMem: uint,
 
