@@ -11,7 +11,7 @@ import "core:log"
 
 import win "core:sys/windows"
 
-init_memory :: proc(totalMem: uint, pageSize: u32) -> rawptr
+init_memory :: proc(totalMem: uint) -> rawptr
 {
   MEM_WRITE_WATCH :: 0x00200000
 
@@ -37,7 +37,7 @@ get_written_pages :: proc(base: rawptr, reqMem: [^]rawptr, pageCount: ^uint, tot
 {
   WRITE_WATCH_FLAG_RESET :: 0x01
   
-  ok: bool
+  ok: bool = true
   // pageSize is ignored since we already know it's 4096 on windows
   pageSize: u32
 

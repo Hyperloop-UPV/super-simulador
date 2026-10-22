@@ -5,6 +5,7 @@
 #+vet shadowing
 package simulator
 
+import "core:reflect"
 import "core:os"
 import "core:fmt"
 import "core:log"
@@ -91,17 +92,14 @@ sim_thread_proc :: proc(rawdata: rawptr)
 gather_memory_info :: proc(memory: ^peripherals.Memory)
 {
   totalPageCount: u32 = 0
-  //memTotalSize: u32 = 0
 
-  for per in peripherals.Types {
-    ti := type_info_of(per)
-    pageCount := (u32(ti.size - 1) / u32(mem.PAGE_SIZE)) + 1
+  types := reflect.struct_field_types(peripherals.Raw_Memory)
+  for type_info in types {
+    ptr := type_info.variant.(reflect.Type_Info_Pointer)
+    ptr_type := ptr.elem
+
+    pageCount := (u32(ptr_type.size - 1) / u32(mem.PAGE_SIZE)) + 1
     totalPageCount += pageCount
-
-    //memTotalSize += u32(ti.size)
-    //fmt.printfln("%v size: %v; page count: %v",
-    //  ti.variant.(reflect.Type_Info_Named).name,
-    //  ti.size, pageCount)
   }
 
   memory.pageCount = uint(totalPageCount)
@@ -166,12 +164,15 @@ create_board :: proc(dllpath_no_ext: string) -> ^peripherals.Memory
   memory.simArray = make([]peripherals.Sim_Data, len(simArrayConst))
 
   // setup peripherals
+  types := reflect.struct_field_types(peripherals.Raw_Memory)
   mem_current := memory.base
-  for periph, idx in peripherals.Types {
-    ti := type_info_of(periph)
-    pageCount := (u32(ti.size - 1) / u32(mem.PAGE_SIZE)) + 1
+  for type_info, idx in types {
+    ptr := type_info.variant.(reflect.Type_Info_Pointer)
+    ptr_type := ptr.elem
 
-    memory.memories[idx] = mem_current
+    pageCount := (u32(ptr_type.size - 1) / u32(mem.PAGE_SIZE)) + 1
+
+    memory.base_addresses[idx] = mem_current
     mem_current = rawptr(uintptr(mem_current) + uintptr(pageCount * u32(mem.PAGE_SIZE)))
 
     memory.simArray[idx] = simArrayConst[idx]
@@ -212,7 +213,7 @@ main :: proc()
 
   log.infof("Total page count: %v", memory.pageCount)
   log.infof("Total page size: %v", memory.totalMem)
-  log.infof("Peripheral count: %v", len(peripherals.Types))
+  log.infof("Peripheral count: %v", peripherals.PERIPHERAL_COUNT)
   log.infof("Total used memory by board: %v Bytes",
     memory.arena.total_used + memory.totalMem)
 
