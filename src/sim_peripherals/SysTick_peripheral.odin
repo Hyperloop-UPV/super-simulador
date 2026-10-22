@@ -10,6 +10,8 @@ import "core:fmt"
 import "core:time"
 import "core:sync"
 
+import mcu "mcu:stm32h723xx"
+
 /* NOTE: This SysTick implementation works at 10 microsecond precision,
  *       As you can see by the value of CALIB
  *
@@ -85,7 +87,7 @@ Systick_Context :: struct {
 SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
 {
   memory := cast(^Memory)rawctx
-  systick := cast(^SysTick)memory.SysTick_base
+  systick := cast(^mcu.SysTick)memory.SysTick_base
   ctx := cast(^Systick_Context)this_rawctx
 
   if systick.CALIB != CALIB_VALUE {
@@ -108,7 +110,7 @@ SysTick_handler :: proc(rawctx, this_rawctx: rawptr)
 SysTick_setup :: proc(rawctx: rawptr) -> rawptr
 {
   memory := cast(^Memory)rawctx
-  systick := cast(^SysTick)memory.SysTick_base
+  systick := cast(^mcu.SysTick)memory.SysTick_base
 
   systick.CALIB = CALIB_VALUE
 
@@ -121,7 +123,7 @@ SysTick_setup :: proc(rawctx: rawptr) -> rawptr
 SysTick_step :: proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
 {
   mem := cast(^Memory)rawctx
-  systick := cast(^SysTick)mem.SysTick_base
+  systick := cast(^mcu.SysTick)mem.SysTick_base
   ctx := cast(^Systick_Context)this_rawctx
 
   if (systick.CTRL & CTRL_ENABLE_CounterEnabled) != 0 {
@@ -149,12 +151,12 @@ SysTick_step :: proc(rawctx, this_rawctx: rawptr, step_time: time.Duration)
 
       if (systick.CTRL & CTRL_TICKINT_InterruptEnabled) != 0 {
         // NOTE: SysTick interrupt enable is not in NVIC (no need to enable it)
-        scb := cast(^SCB)mem.SCB_base
+        scb := cast(^mcu.SCB)mem.SCB_base
 
         vector_base := uintptr(mem.arena_base) + uintptr(scb.VTOR)
         vector_table := cast([^]#type proc "c"())(vector_base)
 
-        vector_table[SysTick_IRQn]()
+        vector_table[mcu.SysTick_IRQn]()
       }
     }
   }

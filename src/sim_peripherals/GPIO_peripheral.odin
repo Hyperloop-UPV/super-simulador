@@ -8,9 +8,11 @@ package peripherals
 import "core:log"
 import "core:time"
 
+import mcu "mcu:stm32h723xx"
+
 GPIO_Context :: struct {
   // to distinguish between gpios, so we can use a single handler and step procs
-  gpio: ^GPIO,
+  gpio: ^mcu.GPIO,
   is_pin_on: [16]bool,
   letter: u8,
 }
@@ -29,7 +31,7 @@ GPIO_Mode :: enum u32 {
 GPIO_handler :: proc(rawctx, this_rawctx: rawptr)
 {
   mem := cast(^Memory)rawctx
-  rcc := cast(^RCC)mem.RCC_base
+  rcc := cast(^mcu.RCC)mem.RCC_base
   gpio := cast(^GPIO_Context)this_rawctx
 
   is_pin_on_prev := gpio.is_pin_on
@@ -79,7 +81,7 @@ GPIOA_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOA_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOA_base
   ctx.letter = 'A'
 
   return GPIO_generic_setup(mem, ctx)
@@ -89,7 +91,7 @@ GPIOB_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOB_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOB_base
   ctx.letter = 'B'
 
   return GPIO_generic_setup(mem, ctx)
@@ -99,7 +101,7 @@ GPIOC_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOC_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOC_base
   ctx.letter = 'C'
 
   return GPIO_generic_setup(mem, ctx)
@@ -109,7 +111,7 @@ GPIOD_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOD_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOD_base
   ctx.letter = 'D'
 
   return GPIO_generic_setup(mem, ctx)
@@ -119,7 +121,7 @@ GPIOE_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOE_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOE_base
   ctx.letter = 'E'
 
   return GPIO_generic_setup(mem, ctx)
@@ -129,7 +131,7 @@ GPIOF_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOF_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOF_base
   ctx.letter = 'F'
 
   return GPIO_generic_setup(mem, ctx)
@@ -139,7 +141,7 @@ GPIOG_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOG_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOG_base
   ctx.letter = 'G'
 
   return GPIO_generic_setup(mem, ctx)
@@ -149,7 +151,7 @@ GPIOH_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOH_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOH_base
   ctx.letter = 'H'
 
   return GPIO_generic_setup(mem, ctx)
@@ -159,7 +161,7 @@ GPIOJ_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOJ_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOJ_base
   ctx.letter = 'J'
 
   return GPIO_generic_setup(mem, ctx)
@@ -169,7 +171,7 @@ GPIOK_setup :: proc(rawctx: rawptr) -> rawptr
 {
   mem := cast(^Memory)rawctx
   ctx := new(GPIO_Context, mem.arena_allocator)
-  ctx.gpio = cast(^GPIO)mem.GPIOK_base
+  ctx.gpio = cast(^mcu.GPIO)mem.GPIOK_base
   ctx.letter = 'K'
 
   return GPIO_generic_setup(mem, ctx)

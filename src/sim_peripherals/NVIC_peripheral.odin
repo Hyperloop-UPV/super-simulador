@@ -15,7 +15,7 @@ NVIC_handler :: proc(rawctx, this_rawctx: rawptr)
 NVIC_setup :: proc(rawctx: rawptr) -> rawptr
 {
   //mem := cast(^Memory)rawctx
-  //nvic := cast(^NVIC)mem.NVIC_base
+  //nvic := cast(^mcu.NVIC)mem.NVIC_base
 
   return nil
 }

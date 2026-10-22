@@ -67,7 +67,13 @@ run_command :: proc(cmd: []string, cwd := ".") -> (ok: bool)
 build :: proc(opt: Build_Options) -> bool
 {
   cmd: [dynamic; 256]string
-  append(&cmd, "odin", "build", "src", "-out:" + SIMULATOR_EXE, "-error-pos-style:unix")
+  append(&cmd,
+    "odin", "build", "src",
+    "-out:" + SIMULATOR_EXE,
+    "-error-pos-style:unix",
+    /* import mcu "mcu:stm32h723xx" */
+    "-collection:mcu=mcu",
+  )
 
   if opt.mode == .debug || opt.mode == .rel_debug {
     append(&cmd, "-debug")
@@ -114,22 +120,24 @@ build :: proc(opt: Build_Options) -> bool
 
 do_codegen :: proc() -> bool
 {
-  cmd := []string{
-    "gcc",
-    "ioctl_defs_linux.c",
-    "-o", "../bin/codegen",
-    "-Wall", "-Wextra",
-    "-Werror",
+  when ODIN_OS == .Linux {
+    cmd := []string{
+      "gcc",
+      "ioctl_defs_linux.c",
+      "-o", "../bin/codegen",
+      "-Wall", "-Wextra",
+      "-Werror",
+    }
+    
+    run_command(cmd, cwd = "codegen") or_return
+    
+    cmd = []string{
+      "bin/codegen",
+    }
+    
+    run_command(cmd) or_return
   }
-
-  run_command(cmd, cwd = "codegen") or_return
-
-  cmd = []string{
-    "bin/codegen",
-  }
-
-  run_command(cmd) or_return
-
+    
   return true
 }
 

@@ -3,7 +3,7 @@
 #+vet unused-variables
 #+vet unused-imports
 #+vet shadowing
-package peripherals
+package stm32h723xx
 
 /* Cortex-M Processor Exceptions Numbers */
 

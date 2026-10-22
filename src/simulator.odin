@@ -19,6 +19,7 @@ import custom_log "logger"
 import spall "spall_wrapper"
 import platform "sim_platform"
 import peripherals "sim_peripherals"
+import mcu "mcu:stm32h723xx"
 
 SIMULATOR_VERSION_MAJOR :: "0"
 SIMULATOR_VERSION_MINOR :: "0"
@@ -92,7 +93,7 @@ gather_memory_info :: proc(memory: ^peripherals.Memory)
 {
   totalPageCount: u32 = 0
 
-  types := reflect.struct_field_types(peripherals.Raw_Memory)
+  types := reflect.struct_field_types(mcu.Raw_Memory)
   for type_info in types {
     ptr := type_info.variant.(reflect.Type_Info_Pointer)
     ptr_type := ptr.elem
@@ -163,7 +164,7 @@ create_board :: proc(dllpath_no_ext: string) -> ^peripherals.Memory
   memory.simArray = make([]peripherals.Sim_Data, len(simArrayConst))
 
   // setup peripherals
-  types := reflect.struct_field_types(peripherals.Raw_Memory)
+  types := reflect.struct_field_types(mcu.Raw_Memory)
   mem_current := memory.base
   for type_info, idx in types {
     ptr := type_info.variant.(reflect.Type_Info_Pointer)
@@ -212,7 +213,7 @@ main :: proc()
 
   log.infof("Total page count: %v", memory.pageCount)
   log.infof("Total page size: %v", memory.totalMem)
-  log.infof("Peripheral count: %v", peripherals.PERIPHERAL_COUNT)
+  log.infof("Peripheral count: %v", mcu.PERIPHERAL_COUNT)
   log.infof("Total used memory by board: %v Bytes",
     memory.arena.total_used + memory.totalMem)
 
