@@ -67,7 +67,7 @@ Board_API :: struct {
 /* Some peripherals might use more than a single page here, 
  * they won't be repeated but in Memory.handlers they will be
  */
-SimArray :: [?]Sim_Data {
+SimArray :: [PERIPHERAL_COUNT]Sim_Data {
   {Stub_setup, Stub_step, Stub_handler, nil}, /* SCnSCB */
   {SCB_setup, SCB_step, SCB_handler, nil}, /* SCB */
   {SysTick_setup, SysTick_step, SysTick_handler, nil}, /* SysTick */
