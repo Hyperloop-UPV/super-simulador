@@ -5,7 +5,6 @@
 #+vet shadowing
 package simulator
 
-import "core:reflect"
 import "core:os"
 import "core:fmt"
 import "core:log"
@@ -14,7 +13,7 @@ import "core:time"
 import "core:thread"
 import "core:dynlib"
 import "core:mem/virtual"
-// import "core:reflect"
+import "core:reflect"
 
 import custom_log "logger"
 import spall "spall_wrapper"
