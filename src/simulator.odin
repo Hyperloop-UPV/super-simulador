@@ -239,6 +239,11 @@ main :: proc()
 
   /* --------------------------------------------- */
 
+  check_max_time := opt.max_time._nsec > 0
+  end_time := time.Tick {
+    time.tick_now()._nsec + opt.max_time._nsec,
+  }
+
   step_time := 10 * time.Microsecond
   memory.board_api.init(memory)
 
@@ -268,6 +273,9 @@ main :: proc()
 
     it += 1
     if (opt.max_iterations != 0) && (it > opt.max_iterations) {
+      break
+    }
+    if check_max_time && (time.tick_now()._nsec > end_time._nsec) {
       break
     }
   }
