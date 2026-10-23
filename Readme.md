@@ -6,6 +6,16 @@ This is a simulator. Not an emulator (yet).
 
 TBD. To see short term wanted changes, see `TODO.md`.
 
+### Usage
+
+```
+sim --board <board dynlib> [--usim <attached micro simulator dynlib>] [--max-iterations <integer>] [--max-time <string>]
+```
+example:
+```
+sim --board board.so --max-iterations 1000_000
+```
+
 ### Building
 
 ```

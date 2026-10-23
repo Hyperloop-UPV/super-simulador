@@ -33,6 +33,7 @@ Build_Mode :: enum {
 Build_Options :: struct {
   mode: Build_Mode `args:"pos=0" usage:"Build mode, can be debug, release or rel-debug for release with debug info"`,
   disable_profiling: bool `usage:"Disable or enable profiling. Profiling is enabled by default"`,
+  run: bool `usage:"Also run the simulator after building"`,
 }
 
 run_command :: proc(cmd: []string, cwd := ".") -> (ok: bool)
@@ -159,5 +160,16 @@ main :: proc()
   if !build(opt) {
     log.error("Build failed")
     os.exit(1)
+  }
+
+  if opt.run {
+    ok := run_command({
+      "sim",
+      "--board", "board." + dynlib.LIBRARY_FILE_EXTENSION,
+      "--max-iterations", "1000_000",
+    })
+    if !ok {
+      os.exit(1)
+    }
   }
 }

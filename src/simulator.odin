@@ -128,23 +128,23 @@ destroy_memory :: proc(memory: ^peripherals.Memory)
 Params:
  - `dllpath_no_ext`: dynamic library file path without extension (the extension will be appended)
 */
-load_board_api :: proc(dllpath_no_ext: string) -> peripherals.Board_API
+load_board_api :: proc(dllpath: string) -> peripherals.Board_API
 {
-  path := fmt.tprintf("%s." + dynlib.LIBRARY_FILE_EXTENSION, dllpath_no_ext)
+  //path := fmt.tprintf("%s." + dynlib.LIBRARY_FILE_EXTENSION, dllpath_no_ext)
 
   board_api: peripherals.Board_API
-  count, ok := dynlib.initialize_symbols(&board_api, path, "Board_", "library")
-  log.infof("%v symbols loaded from %s", count, path)
+  count, ok := dynlib.initialize_symbols(&board_api, dllpath, "Board_", "library")
+  log.infof("%v symbols loaded from %s", count, dllpath)
   if !ok {
     log.errorf("Could not load symbols from %s: %v",
-      path, dynlib.last_error())
+      dllpath, dynlib.last_error())
     os.exit(1)
   }
 
   return board_api
 }
 
-create_board :: proc(dllpath_no_ext: string) -> ^peripherals.Memory
+create_board :: proc(dllpath: string) -> ^peripherals.Memory
 {
   // setup allocator for peripheral internal memory.
   // 1 GB reserved but not committed size (virtual memory)
@@ -162,7 +162,7 @@ create_board :: proc(dllpath_no_ext: string) -> ^peripherals.Memory
   memory.arena_base = memory.arena.curr_block.base
 
   init_memory(memory)
-  memory.board_api = load_board_api("board")
+  memory.board_api = load_board_api(dllpath)
   
   simArrayConst := peripherals.SimArray
   memory.simArray = make([]peripherals.Sim_Data, len(simArrayConst))
@@ -201,6 +201,9 @@ destroy_board :: proc(memory: ^peripherals.Memory)
 
 main :: proc()
 {
+  opt := cmdline_parse()
+  defer cmdline_destroy(&opt)
+
   if !spall.init("trace.spall") {
     fmt.eprint("Could not init profiling")
     os.exit(1)
@@ -212,7 +215,7 @@ main :: proc()
   context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
   defer custom_log.destroy_logger(context.logger)
 
-  memory := create_board("board")
+  memory := create_board(opt.board[0])
   defer destroy_board(memory)
 
   log.infof("Total page count: %v", memory.pageCount)
@@ -239,8 +242,6 @@ main :: proc()
   step_time := 10 * time.Microsecond
   memory.board_api.init(memory)
 
-  MAX_ITERATIONS :: 1_000_000
-
   /* step easy version: 
    * the stepping is done by calling update() on the simulated board
    */
@@ -265,11 +266,9 @@ main :: proc()
 
     time.sleep(10*time.Microsecond)
 
-    when MAX_ITERATIONS != 0 {
-      it += 1
-      if it >= MAX_ITERATIONS {
-        break
-      }
+    it += 1
+    if (opt.max_iterations != 0) && (it > opt.max_iterations) {
+      break
     }
   }
 
