@@ -385,7 +385,7 @@ do_usim_codegen :: proc() -> bool
 
   write_string(f, "typedef enum USim_Event_Kind {\n")
   for kind in reflect.enum_fields_zipped(usim.Event_Kind) {
-    line := fmt.tprintfln("  %s = %v", kind.name, i64(kind.value))
+    line := fmt.tprintfln("  %s = %v,", kind.name, i64(kind.value))
     write_string(f, line)
   }
   write_string(f, "} USim_Event_Kind;\n\n")
