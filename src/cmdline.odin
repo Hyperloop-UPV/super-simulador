@@ -18,18 +18,18 @@ Sim_Options_SemiParsed :: struct {
   board: [dynamic]string `args:"required" usage:"Board dynamic libraries"`,
   usim: [dynamic]string `usage:"Micro simulators attached"`,
   max_iterations: int `usage:"Max iterations for the simulator"`,
-  max_time: string `usage:"Max time for the simulator, starts counting after initialization"`,
+  max_time: string `usage:"Max time for the simulator, starts counting after most of the initialization"`,
 }
 
 Sim_Options :: struct {
   board: [dynamic]string,
   usim: [dynamic]string,
   max_iterations: int,
-  max_time: time.Tick,
+  max_time: time.Duration,
 }
 
 @(private="file")
-parse_time :: proc(t: string) -> time.Tick
+parse_time :: proc(t: string) -> time.Duration
 {
   p: int
   n, _ := strconv.parse_i64(t, n = &p)
@@ -38,9 +38,7 @@ parse_time :: proc(t: string) -> time.Tick
     os.exit(1)
   }
 
-  tick := time.Tick{
-    _nsec = n,
-  }
+  tick := time.Duration(n)
   modified := t[p:]
   if len(modified) == 0 {
     fmt.eprintfln("Could not parse time from max-time argument '%s': no modifier, expected one of ['s','ms','us','ns']")
@@ -48,10 +46,10 @@ parse_time :: proc(t: string) -> time.Tick
   }
 
   switch modified {
-    case "s":  tick._nsec *= 1000_000_000
-    case "ms": tick._nsec *= 1000_000
-    case "us": tick._nsec *= 1000
-    case "ns": tick._nsec *= 1
+    case "s":  tick *= 1000_000_000
+    case "ms": tick *= 1000_000
+    case "us": tick *= 1000
+    case "ns": tick *= 1
   }
 
   return tick
@@ -62,10 +60,6 @@ cmdline_parse :: proc() -> Sim_Options
   opt: Sim_Options_SemiParsed
   flags.parse_or_exit(&opt, os.args, SIM_CMDLINE_PARSING_STYLE)
 
-  if len(opt.board) > 1 {
-    fmt.eprintln("[ERROR] Only one board supported at once for now")
-    os.exit(1)
-  }
   if len(opt.usim) > 0 {
     fmt.eprintln("[ERROR] Micro simulators not supported yet")
     os.exit(1)

@@ -34,6 +34,21 @@ Simulator_Thread_Data :: struct {
   shouldQuit: b32,
 }
 
+/* thread data for a single board, global_should_quit is readonly */
+Board_Thread_Data :: struct {
+  memory: ^peripherals.Memory,
+  global_should_quit: ^bool,
+  opt: Sim_Options,
+  step_time: time.Duration,
+  sim_thread_should_quit: ^b32,
+  sim_thread: ^thread.Thread,
+}
+
+Thread_Data :: struct {
+  sim: Simulator_Thread_Data,
+  board: Board_Thread_Data,
+}
+
 sim_thread_proc :: proc(rawdata: rawptr)
 {
   data := cast(^Simulator_Thread_Data)rawdata
@@ -199,6 +214,88 @@ destroy_board :: proc(memory: ^peripherals.Memory)
   destroy_memory(memory)
 }
 
+/* thread procedure for a single board */
+board_thread_proc :: proc(rawdata: rawptr)
+{
+  data := cast(^Board_Thread_Data)rawdata
+  memory := data.memory
+  opt := data.opt
+
+  memory.board_api.init(memory)
+
+  /* step easy version: 
+  * the stepping is done by calling update() on the simulated board
+  */
+
+  it := 0
+  for {
+    spall._buffer_begin("Board iteration")
+    spall._buffer_begin("Peripheral update")
+
+    for periph in memory.simArray {
+      if periph.step != peripherals.Stub_step {
+        //fmt.printfln("Peripheral %v step", periph)
+        periph.step(memory, periph.this_ctx, data.step_time)
+      }
+    }
+
+    spall._buffer_end() // "Peripheral update"
+
+    memory.board_api.update()
+
+    spall._buffer_end() // "Board iteration"
+
+    it += 1
+    if (opt.max_iterations != 0) && (it > opt.max_iterations) {
+      break
+    }
+    if data.global_should_quit^ {
+      // core simulator wants to quit for whatever reason
+      break
+    }
+
+    time.sleep(10*time.Microsecond)
+  }
+
+  // wait until sim_thread quits 'voluntarily'
+  data.sim_thread_should_quit^ = true
+  thread.join(data.sim_thread)
+}
+
+/* Launch simulation on the already initialized board `memory.board_api`
+ * global_should_quit is readonly
+ */
+launch_board :: proc(thread_data_backing: ^Thread_Data, memory: ^peripherals.Memory, global_should_quit: ^bool, opt: Sim_Options, step_time: time.Duration) -> (board_thread: ^thread.Thread)
+{
+  td := thread_data_backing
+  td.sim = Simulator_Thread_Data {
+    memory = memory,
+    simArray = &memory.simArray[0],
+  }
+
+  td.board = Board_Thread_Data {
+    memory = memory,
+    global_should_quit = global_should_quit,
+    opt = opt,
+    step_time = step_time,
+  }
+
+  td.board.sim_thread_should_quit = &td.sim.shouldQuit
+  td.board.sim_thread = thread.create_and_start_with_data(
+    &td.sim,
+    sim_thread_proc,
+    context,
+  )
+
+  board_thread = thread.create_and_start_with_data(
+    &td.board,
+    board_thread_proc,
+    context,
+  )
+
+  return
+}
+
 main :: proc()
 {
   opt := cmdline_parse()
@@ -215,72 +312,54 @@ main :: proc()
   context.logger = custom_log.create_logger(opt = {.Level, .Time, .Terminal_Color})
   defer custom_log.destroy_logger(context.logger)
 
-  memory := create_board(opt.board[0])
-  defer destroy_board(memory)
+  /* --------------------------------------------- */
 
-  log.infof("Total page count: %v", memory.pageCount)
-  log.infof("Total page size: %v", memory.totalMem)
-  log.infof("Peripheral count: %v", mcu.PERIPHERAL_COUNT)
-  log.infof("Total used memory by board: %v Bytes",
-    memory.arena.total_used + memory.totalMem)
-
-  sim_thread_data := Simulator_Thread_Data {
-    memory = memory,
-    simArray = &memory.simArray[0],
+  memories := make([]^peripherals.Memory, len(opt.board))
+  defer {
+    for m in memories {
+      destroy_board(m)
+    }
+    delete(memories)
   }
+  for board, board_idx in opt.board {
+    memories[board_idx] = create_board(board)
+  }
+
+  log.infof("Total page count: %v", memories[0].pageCount * len(opt.board))
+  log.infof("Total page size: %v", memories[0].totalMem * len(opt.board))
+  log.infof("Peripheral count for each board: %v", mcu.PERIPHERAL_COUNT)
+  log.infof("Total used memory: %v Bytes",
+    (memories[0].arena.total_used + memories[0].totalMem) * len(opt.board),
+  )
 
   spall._buffer_end() // "Startup"
 
-  sim_thread := thread.create_and_start_with_data(
-    &sim_thread_data,
-    sim_thread_proc,
-    context,
-  )
+  /* --------------------------------------------- */
+
+  global_should_quit: bool
+  step_time := 10 * time.Microsecond
+  thread_data := make([]Thread_Data, len(opt.board))
+  defer delete(thread_data)
+  board_threads := make([]^thread.Thread, len(opt.board))
+  defer delete(board_threads)
+
+  for mem, idx in memories {
+    board_threads[idx] = launch_board(&thread_data[idx], mem, &global_should_quit, opt, step_time)
+  }
 
   /* --------------------------------------------- */
 
-  check_max_time := opt.max_time._nsec > 0
-  end_time := time.Tick {
-    time.tick_now()._nsec + opt.max_time._nsec,
-  }
-
-  step_time := 10 * time.Microsecond
-  memory.board_api.init(memory)
-
-  /* step easy version: 
-   * the stepping is done by calling update() on the simulated board
-   */
-
-  it := 0
-  for {
-    spall._buffer_begin("Board iteration")
-    spall._buffer_begin("Peripheral update")
-
-    for periph in memory.simArray {
-      if periph.step != peripherals.Stub_step {
-        //fmt.printfln("Peripheral %v step", periph)
-        periph.step(memory, periph.this_ctx, step_time)
-      }
+  if opt.max_time > 0 {
+    time.sleep(opt.max_time)
+    global_should_quit = true
+    // wait until board_threads quit 'voluntarily'
+    for th in board_threads {
+      thread.join(th)
     }
-
-    spall._buffer_end() // "Peripheral update"
-
-    memory.board_api.update()
-
-    spall._buffer_end() // "Board iteration"
-
-    time.sleep(10*time.Microsecond)
-
-    it += 1
-    if (opt.max_iterations != 0) && (it > opt.max_iterations) {
-      break
-    }
-    if check_max_time && (time.tick_now()._nsec > end_time._nsec) {
-      break
+  } else {
+    // sleep until all board_threads finish
+    for th in board_threads {
+      thread.join(th)
     }
   }
-
-  // wait until sim_thread quits 'voluntarily'
-  sim_thread_data.shouldQuit = true
-  thread.join(sim_thread)
 }
