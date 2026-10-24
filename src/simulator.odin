@@ -118,8 +118,8 @@ load_board_api :: proc(dllpath: string) -> peripherals.Board_API
     os.exit(1)
   }
 
-  load_symbol_or_err(board_api.library, dllpath, "Board_init", &board_api.init)
-  load_symbol_or_err(board_api.library, dllpath, "Board_update", &board_api.update)
+  load_symbol_or_err(board_api.library, dllpath, "Board_init", cast(^rawptr)&board_api.init)
+  load_symbol_or_err(board_api.library, dllpath, "Board_update", cast(^rawptr)&board_api.update)
 
   log.infof("loaded symbols correctly from %s", dllpath)
   return board_api
@@ -136,9 +136,9 @@ load_usim_api :: proc(dllpath: string) -> usim.API
     os.exit(1)
   }
 
-  load_symbol_or_err(usim_api.library, dllpath, "USim_init", &usim_api._init)
-  load_symbol_or_err(usim_api.library, dllpath, "USim_update", &usim_api._update)
-  load_symbol_or_err(usim_api.library, dllpath, "USim_deinit", &usim_api._deinit)
+  load_symbol_or_err(usim_api.library, dllpath, "USim_init", cast(^rawptr)&usim_api._init)
+  load_symbol_or_err(usim_api.library, dllpath, "USim_update", cast(^rawptr)&usim_api._update)
+  load_symbol_or_err(usim_api.library, dllpath, "USim_deinit", cast(^rawptr)&usim_api._deinit)
 
   log.infof("loaded symbols correctly from %s", dllpath)
   return usim_api
