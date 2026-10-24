@@ -117,11 +117,11 @@ API :: struct {
   /* api from usim to core sim (taken from dll) */
 
   /* USim_init is expected to be found */
-  init:  Init_Proc,
+  _init:  Init_Proc,
   /* USim_update is expected to be found */
-  update: Update_Proc,
+  _update: Update_Proc,
   /* USim_deinit is expected to be found */
-  deinit: Deinit_Proc,
+  _deinit: Deinit_Proc,
 
   library: dynlib.Library,
 }

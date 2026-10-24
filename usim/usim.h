@@ -16,9 +16,9 @@ typedef struct USim_API {
   bool (*poll_event)(USim_Event *event);
   bool (*wait_event)(USim_Event *event);
   bool (*add_event_watch)(USim_Event_Kind kind, void (*callback)(USim_Event *event, void *ctx), void *ctx);
-  void *(*init)(void *memory, USim_API *api, const char* board_name);
-  bool (*update)(void *usim_mem);
-  void (*deinit)(void *usim_mem);
+  void *(*_init)(void *memory, USim_API *api, const char* board_name);
+  bool (*_update)(void *usim_mem);
+  void (*_deinit)(void *usim_mem);
   void *library;
 } USim_API;
 
