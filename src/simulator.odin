@@ -92,6 +92,17 @@ destroy_memory :: proc(memory: ^peripherals.Memory)
 
 /* --------------------------------------------- */
 
+load_symbol_or_err :: proc(lib: dynlib.Library, dllpath, symbol: string, fn: ^rawptr)
+{
+  ptr, found := dynlib.symbol_address(lib, symbol)
+  if !found {
+    log.errorf("Could not load symbol '%s' from %s: %v",
+      symbol, dllpath, dynlib.last_error())
+    os.exit(1)
+  }
+  fn^ = ptr
+}
+
 /*
 Params:
  - `dllpath`: dynamic library file path with extension
@@ -99,29 +110,37 @@ Params:
 load_board_api :: proc(dllpath: string) -> peripherals.Board_API
 {
   board_api: peripherals.Board_API
-  count, ok := dynlib.initialize_symbols(&board_api, dllpath, "Board_", "library")
-  log.infof("%v symbols loaded from %s", count, dllpath)
-  if !ok {
-    log.errorf("Could not load symbols from %s: %v",
+  did_load: bool
+  board_api.library, did_load = dynlib.load_library(dllpath)
+  if !did_load {
+    log.errorf("Could not load library from %s: %v",
       dllpath, dynlib.last_error())
     os.exit(1)
   }
 
+  load_symbol_or_err(board_api.library, dllpath, "Board_init", &board_api.init)
+  load_symbol_or_err(board_api.library, dllpath, "Board_update", &board_api.update)
+
+  log.infof("loaded symbols correctly from %s", dllpath)
   return board_api
 }
 
-// TODO: Finish.
 load_usim_api :: proc(dllpath: string) -> usim.API
 {
   usim_api: usim.API
-  count, ok := dynlib.initialize_symbols(&usim_api, dllpath, "Board_", "library")
-  log.infof("%v symbols loaded from %s", count, dllpath)
-  if !ok {
-    log.errorf("Could not load symbols from %s: %v",
+  did_load: bool
+  usim_api.library, did_load = dynlib.load_library(dllpath)
+  if !did_load {
+    log.errorf("Could not load library from %s: %v",
       dllpath, dynlib.last_error())
     os.exit(1)
   }
 
+  load_symbol_or_err(usim_api.library, dllpath, "USim_init", &usim_api._init)
+  load_symbol_or_err(usim_api.library, dllpath, "USim_update", &usim_api._update)
+  load_symbol_or_err(usim_api.library, dllpath, "USim_deinit", &usim_api._deinit)
+
+  log.infof("loaded symbols correctly from %s", dllpath)
   return usim_api
 }
 
