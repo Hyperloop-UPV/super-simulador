@@ -1,0 +1,23 @@
+#ifndef USIM_H
+#define USIM_H
+
+typedef enum USim_Event_Kind {
+  Quit = 0
+} USim_Event_Kind;
+
+typedef struct USim_Event {
+  USim_Event_Kind kind;
+} USim_Event;
+
+typedef struct USim_API {
+  bool (*event_subscribe)(USim_Event_Kind kind);
+  bool (*poll_event)(USim_Event *event);
+  bool (*wait_event)(USim_Event *event);
+  bool (*add_event_watch)(USim_Event_Kind kind, void (*callback)(USim_Event *event, void *ctx), void *ctx);
+  void *(*init)(void *memory, USim_API *api, const char* board_name);
+  bool (*update)(void *usim_mem);
+  void (*deinit)(void *usim_mem);
+  void *library;
+} USim_API;
+
+#endif // USIM_H

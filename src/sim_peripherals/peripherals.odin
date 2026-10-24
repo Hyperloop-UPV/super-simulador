@@ -20,8 +20,6 @@ Handles any change in the the pages the peripheral uses
 Arguments:
  - `rawctx`: will contain a ^Memory
  - `this_rawctx`: will contain a rawptr returned from the function in `SetupFn`
-
- - TODO: What would I need? Wanna try out making one before deciding
 */
 Handler_Proc :: proc(rawctx, this_rawctx: rawptr)
 
