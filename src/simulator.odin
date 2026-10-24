@@ -67,6 +67,7 @@ sim_thread_proc :: proc(rawdata: rawptr)
     spall._buffer_begin("Peripheral page write watch")
 
     if data.shouldQuit {
+      spall._buffer_end()
       break
     }
 
@@ -79,12 +80,13 @@ sim_thread_proc :: proc(rawdata: rawptr)
     )
 
     if !ok {
+      spall._buffer_end()
       continue
     }
 
     if pageCount > 0 {
-      spall.SCOPED_EVENT("Peripheral handle page writes")
-      
+      spall._buffer_begin("Peripheral handle page writes")
+
       for idx: uint = 0; idx < pageCount; idx += 1 {
         pageAddr: rawptr = memory.writeWatchRequestMem[idx]
         pageOffset := uintptr(pageAddr) - uintptr(memory.base)
@@ -93,9 +95,11 @@ sim_thread_proc :: proc(rawdata: rawptr)
 
         memory.handlers[pageIdx](memory, data.simArray[pageIdx].this_ctx)
       }
+
+      spall._buffer_end() // "Peripheral handle page writes"
     }
 
-    spall._buffer_end()
+    spall._buffer_end() // "Peripheral page write watch"
 
     diff := time.diff(start, time.now())
     if diff < ITERATION_TIME {
@@ -221,6 +225,12 @@ board_thread_proc :: proc(rawdata: rawptr)
   memory := data.memory
   opt := data.opt
 
+  if !spall.init_thread() {
+    log.errorf("Could not init profiling in %s", #procedure)
+    os.exit(1)
+  }
+  defer spall.deinit_thread()
+
   memory.board_api.init(memory)
 
   /* step easy version: 
@@ -305,7 +315,10 @@ main :: proc()
     fmt.eprint("Could not init profiling")
     os.exit(1)
   }
-  defer spall.deinit()
+  defer {
+    spall.deinit_thread()
+    spall.deinit()
+  }
 
   spall._buffer_begin("Startup")
 

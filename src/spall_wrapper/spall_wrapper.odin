@@ -33,12 +33,15 @@ when PROFILING {
 init :: proc(filename: string) -> (ok: bool)
 {
   when PROFILING {
-    ctx = context_create(filename) or_return
+    sync.atomic_store(&buffer_idx, 1)
+    ctx = context_create_with_scale(filename, false, 1.0) or_return
     backing_buffers[0] = make([]u8, BUFFER_DEFAULT_SIZE)
     if backing_buffers[0] == nil { return }
-    buffer = buffer_create(backing_buffers[0], u32(sync.current_thread_id()))
+    buffer, ok = buffer_create(backing_buffers[0], u32(sync.current_thread_id()))
+    // have thread buffers start at 1, 0 is main buffer
+  } else {
+    ok = true
   }
-  ok = true
   return
 }
 
@@ -47,11 +50,16 @@ init_thread :: proc() -> (ok: bool)
 {
   when PROFILING {
     thread_idx := sync.atomic_add(&buffer_idx, 1)
+    if thread_idx >= MAX_THREADS {
+      // too many threads, configure MAX_THREADS
+      return
+    }
     backing_buffers[thread_idx] = make([]u8, BUFFER_DEFAULT_SIZE)
     if backing_buffers[thread_idx] == nil { return }
-    buffer = buffer_create(backing_buffers[thread_idx], u32(sync.current_thread_id()))
+    buffer, ok = buffer_create(backing_buffers[thread_idx], u32(sync.current_thread_id()))
+  } else {
+    ok = true
   }
-  ok = true
   return
 }
 
@@ -67,10 +75,10 @@ deinit_thread :: proc()
 deinit :: proc()
 {
   when PROFILING {
+    spall.context_destroy(&ctx)
     for i := 0; i < buffer_idx; i += 1 {
       delete(backing_buffers[i])
     }
-    spall.context_destroy(&ctx)
   }
 }
 
