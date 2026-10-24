@@ -335,11 +335,6 @@ main :: proc()
   opt := cmdline_parse()
   defer cmdline_destroy(&opt)
 
-  x: [dynamic]string
-  if x != nil {
-    fmt.print(x)
-  }
-
   if !spall.init("trace.spall") {
     fmt.eprint("Could not init profiling")
     os.exit(1)
