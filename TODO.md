@@ -7,10 +7,10 @@
  - [ ] Command line: decide on what to do to emulate cfg.json through command line parsing. See `cmdline.odin`
 
 ## micro viewing simulators (simulators that might log data, etc.)
- - [ ] Calling micro simulators from super simulator (core simulator). Load dll etc.
+ - [x] Calling micro simulators from super simulator (core simulator). Load dll etc.
  - [x] Event queue for micro simulators. Example: GPIOx pin value changes, SysTick interrupts, etc.
  - [x] Subscribing to events to avoid sending unwanted events ?
- - [ ] Micro viewing simulator example
+ - [x] Micro viewing simulator example
 
 ## micro emulating simulators
  - [ ] Make a slightly different interface for emulating simulators, for example for emulating an AFE (Analog Front End)
