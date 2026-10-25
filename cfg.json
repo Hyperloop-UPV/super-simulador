@@ -1,5 +1,5 @@
 {
-  "$schema": "misc/sim-cfg.schema.json",
+  "$schema": "https://raw.githubusercontent.com/Hyperloop-UPV/super-simulador/refs/heads/main/misc/sim-cfg.schema.json",
 
   "boards": [
     "bin/test"
