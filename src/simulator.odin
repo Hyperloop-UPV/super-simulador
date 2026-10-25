@@ -5,6 +5,8 @@
 #+vet shadowing
 package simulator
 
+import "base:runtime"
+
 import "core:os"
 import "core:fmt"
 import "core:log"
@@ -12,8 +14,9 @@ import "core:mem"
 import "core:time"
 import "core:thread"
 import "core:dynlib"
-import "core:mem/virtual"
 import "core:reflect"
+import "core:sync/chan"
+import "core:mem/virtual"
 
 import custom_log "logger"
 import spall "spall_wrapper"
@@ -48,9 +51,18 @@ Board_Thread_Data :: struct {
   sim_thread: ^thread.Thread,
 }
 
-Thread_Data :: struct {
+FW_Thread_Data :: struct {
   sim: Simulator_Thread_Data,
   board: Board_Thread_Data,
+}
+
+USim_Thread_Data :: struct {
+  attached_memories: []^peripherals.Memory,
+  board_names: []cstring,
+  usim_dll: string,
+  usim_api: usim.API,
+  global_should_quit: ^bool,
+  usim_id: usim.Id,
 }
 
 /* --------------------------------------------- */
@@ -129,16 +141,16 @@ load_usim_api :: proc(dllpath: string) -> usim.API
 {
   usim_api: usim.API
   did_load: bool
-  usim_api.library, did_load = dynlib.load_library(dllpath)
+  usim_api._library, did_load = dynlib.load_library(dllpath)
   if !did_load {
     log.errorf("Could not load library from %s: %v",
       dllpath, dynlib.last_error())
     os.exit(1)
   }
 
-  load_symbol_or_err(usim_api.library, dllpath, "USim_init", cast(^rawptr)&usim_api._init)
-  load_symbol_or_err(usim_api.library, dllpath, "USim_update", cast(^rawptr)&usim_api._update)
-  load_symbol_or_err(usim_api.library, dllpath, "USim_deinit", cast(^rawptr)&usim_api._deinit)
+  load_symbol_or_err(usim_api._library, dllpath, "USim_init", cast(^rawptr)&usim_api._init)
+  load_symbol_or_err(usim_api._library, dllpath, "USim_update", cast(^rawptr)&usim_api._update)
+  load_symbol_or_err(usim_api._library, dllpath, "USim_deinit", cast(^rawptr)&usim_api._deinit)
 
   log.infof("loaded symbols correctly from %s", dllpath)
   return usim_api
@@ -146,7 +158,67 @@ load_usim_api :: proc(dllpath: string) -> usim.API
 
 /* --------------------------------------------- */
 
-create_board :: proc(dllpath: string) -> ^peripherals.Memory
+USim_event_subscribe :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id) -> bool
+{
+  memory := cast(^peripherals.Memory)rawmem
+  context = memory.odin_ctx
+
+  subscribers := memory.subscribed_events[kind]
+  subscribers |= 1 << u64(id)
+  memory.subscribed_events[kind] = subscribers
+
+  return true
+}
+
+USim_poll_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
+{
+  status: chan.Timeout_Status
+  ch := chan.Chan(usim.Event, .Recv) {
+    impl = cast(^chan.Raw_Chan)channel.impl,
+  }
+
+  event^, status = chan.recv_with_timeout(ch, time.Duration(0))
+  return status == .Ok
+}
+
+USim_wait_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
+{
+  ok: bool
+  ch := chan.Chan(usim.Event, .Recv) {
+    impl = cast(^chan.Raw_Chan)channel.impl,
+  }
+
+  event^, ok = chan.recv(ch)
+  return ok
+}
+
+USim_add_event_watch :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Event_Watch_Callback_Proc, ctx: rawptr) -> bool
+{
+  memory := cast(^peripherals.Memory)rawmem
+  context = memory.odin_ctx
+
+  watch, found := memory.event_watch[kind]
+
+  new_watch: []peripherals.USim_Event_Watch_Data
+  if found {
+    new_watch = make([]peripherals.USim_Event_Watch_Data, len(watch))
+    mem.copy(&new_watch[0], &watch[0], len(watch) * size_of(peripherals.USim_Event_Watch_Data))
+    delete(watch)
+  } else {
+    new_watch = make([]peripherals.USim_Event_Watch_Data, 1)
+  }
+
+  new_watch[len(new_watch)-1].callback = callback
+  new_watch[len(new_watch)-1].ctx = ctx
+
+  memory.event_watch[kind] = new_watch
+
+  return true
+}
+
+/* --------------------------------------------- */
+
+create_board :: proc(dllpath: string, channels: []chan.Chan(usim.Event, .Both)) -> ^peripherals.Memory
 {
   // setup allocator for peripheral internal memory.
   // 1 GB reserved but not committed size (virtual memory)
@@ -162,6 +234,8 @@ create_board :: proc(dllpath: string) -> ^peripherals.Memory
   memory.arena = arena
   memory.arena_allocator = virtual.arena_allocator(&memory.arena)
   memory.arena_base = memory.arena.curr_block.base
+
+  memory.odin_ctx = context
 
   init_memory(memory)
   memory.board_api = load_board_api(dllpath)
@@ -190,12 +264,28 @@ create_board :: proc(dllpath: string) -> ^peripherals.Memory
     }
   }
 
+  // setup event queue channels
+  memory.channels = make([]chan.Chan(usim.Event, .Send), len(channels))
+  for c, idx in channels {
+    memory.channels[idx] = chan.as_send(c)
+  }
+  reserve(&memory.subscribed_events, usim.Event_Kind.Count)
+  reserve(&memory.event_watch, usim.Event_Kind.Count)
+
   return memory
 }
 
 destroy_board :: proc(memory: ^peripherals.Memory)
 {
   dynlib.unload_library(memory.board_api.library)
+
+  delete(memory.channels)
+  // delete dynamically created USim_Event_Watch_Data slices
+  for _, value in memory.event_watch {
+    delete(value)
+  }
+  delete(memory.event_watch)
+  delete(memory.subscribed_events)
 
   /* NOTE: This has to be last because `memory` is part of the arena */
   destroy_memory(memory)
@@ -315,10 +405,34 @@ board_thread_proc :: proc(rawdata: rawptr)
   thread.join(data.sim_thread)
 }
 
+/* Thread procedure for a single usim */
+usim_thread_proc :: proc(rawdata: rawptr)
+{
+  data := cast(^USim_Thread_Data)rawdata
+
+  data.usim_api = load_usim_api(data.usim_dll)
+
+  ctx: rawptr
+  for i := 0; i < len(data.attached_memories); i += 1 {
+    memory := data.attached_memories[i]
+    name := data.board_names[i]
+    ctx = data.usim_api._init(memory, &data.usim_api, name, data.usim_id)
+  }
+
+  quit: bool
+  for !quit && !(data.global_should_quit^) {
+    quit = data.usim_api._update(ctx)
+    // sleep is expected to be done in update() callback
+  }
+  data.usim_api._deinit(ctx)
+}
+
+/* --------------------------------------------- */
+
 /* Launch simulation on the already initialized board `memory.board_api`
  * global_should_quit is readonly
  */
-launch_board :: proc(thread_data_backing: ^Thread_Data, memory: ^peripherals.Memory, global_should_quit: ^bool, max_iterations: int, step_time: time.Duration) -> (board_thread: ^thread.Thread)
+launch_board :: proc(thread_data_backing: ^FW_Thread_Data, memory: ^peripherals.Memory, global_should_quit: ^bool, max_iterations: int, step_time: time.Duration) -> (board_thread: ^thread.Thread)
 {
   td := thread_data_backing
   td.sim = Simulator_Thread_Data {
@@ -349,6 +463,19 @@ launch_board :: proc(thread_data_backing: ^Thread_Data, memory: ^peripherals.Mem
   return
 }
 
+launch_usim :: proc(backing: ^USim_Thread_Data) -> ^thread.Thread
+{
+  usim_thread := thread.create_and_start_with_data(
+    backing,
+    usim_thread_proc,
+    context,
+  )
+
+  return usim_thread
+}
+
+/* --------------------------------------------- */
+
 main :: proc()
 {
   opt := cmdline_parse()
@@ -377,9 +504,49 @@ main :: proc()
     }
     delete(memories)
   }
-  for board, board_idx in opt.board {
-    memories[board_idx] = create_board(board)
+  channels := make([]chan.Chan(usim.Event, .Both), len(opt.usim))
+  defer {
+    for c in channels {
+      chan.destroy(c)
+    }
+    delete(channels)
   }
+  usims := make([]USim_Thread_Data, len(opt.usim))
+  defer {
+    for u in usims {
+      delete(u.attached_memories)
+      for name in u.board_names {
+        delete(name)
+      }
+      delete(u.board_names)
+    }
+    delete(usims)
+  }
+
+  /* --------------------------------------------- */
+
+  for idx := 0; idx < len(channels); idx += 1 {
+    chan_err: runtime.Allocator_Error
+    channels[idx], chan_err = chan.create_buffered(
+      chan.Chan(usim.Event, .Both),
+      usim.QUEUE_MAX_SIZE,
+      context.allocator,
+    )
+    if chan_err != nil {
+      log.errorf("Could not create event queue channel: %v", chan_err)
+      os.exit(1)
+    }
+  }
+
+  for board, board_idx in opt.board {
+    memories[board_idx] = create_board(board, channels)
+  }
+
+  //for usim_dll, usim_idx in opt.usim {
+    //td := USim_Thread_Data {
+    //
+    //}
+  //}
 
   log.infof("Total page count: %v", memories[0].pageCount * len(opt.board))
   log.infof("Total page size: %v", memories[0].totalMem * len(opt.board))
@@ -394,7 +561,7 @@ main :: proc()
 
   global_should_quit: bool
   step_time := 10 * time.Microsecond
-  thread_data := make([]Thread_Data, len(opt.board))
+  thread_data := make([]FW_Thread_Data, len(opt.board))
   defer delete(thread_data)
   board_threads := make([]^thread.Thread, len(opt.board))
   defer delete(board_threads)
@@ -409,13 +576,9 @@ main :: proc()
     time.sleep(opt.max_time)
     global_should_quit = true
     // wait until board_threads quit 'voluntarily'
-    for th in board_threads {
-      thread.join(th)
-    }
+    thread.join_multiple(..board_threads[:])
   } else {
     // sleep until all board_threads finish
-    for th in board_threads {
-      thread.join(th)
-    }
+    thread.join_multiple(..board_threads[:])
   }
 }

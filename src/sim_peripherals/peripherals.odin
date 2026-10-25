@@ -6,13 +6,17 @@
 package peripherals
 
 /* NOTE: GPV (Global Programmer View) is alone 284KiB :( */
+  
+import "base:runtime"
 
 import "core:mem"
 import "core:time"
 import "core:dynlib"
 import "core:mem/virtual"
+import "core:sync/chan"
 
 import mcu "mcu:stm32h723xx"
+import "../../usim"
 
 /*
 Handles any change in the the pages the peripheral uses
@@ -60,6 +64,12 @@ Board_API :: struct {
   update: proc "c"(),
 
   library: dynlib.Library,
+}
+
+USim_Event_Watch_Key :: usim.Event_Kind
+USim_Event_Watch_Data :: struct {
+  callback: usim.Event_Watch_Callback_Proc,
+  ctx: rawptr,
 }
 
 /* Some peripherals might use more than a single page here, 
@@ -357,6 +367,9 @@ Memory :: struct {
   arena_base: rawptr,
 
   /* NOTE: These are at the bottom because they don't need to be sent to the board */
+
+  odin_ctx: runtime.Context,
+
   // Holds pageCount * PLATFORM_REQ_MULTIPLIER items max.
   writeWatchRequestMem: []rawptr,
   pageCount: uint,
@@ -369,8 +382,27 @@ Memory :: struct {
   base: rawptr,
   simArray: []Sim_Data,
 
+  /*
+  Event queue channels for usim, one per attached usim
+  */
+  channels: []chan.Chan(usim.Event, .Send),
+
+  /*
+  Map which holds indices into channels array, one bit per usim, maximum of 64 (64 bits)
+  */
+  subscribed_events: map[usim.Event_Kind]u64,
+
+  /*
+  Map which holds event watch callbacks that will be called when an event happens (stopping execution)
+  */
+  event_watch: map[USim_Event_Watch_Key][]USim_Event_Watch_Data,
+
   // NOTE: The arena does not support freeing of individual elements,
   //       it is purely for long-lived allocations
   arena: virtual.Arena,
   arena_allocator: mem.Allocator,
 }
+
+/* see Memory.subscibed_events */
+#assert(usim.MAX_USIMS <= 64)
+

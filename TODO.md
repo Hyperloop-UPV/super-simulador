@@ -4,11 +4,17 @@
        {`stub_peripheral.odin`, ...} in a module to handle all peripherals
  - [ ] `__DSB()` (data synchronization barrier) stops simulated board until a full iteration of write detection in simulator happens
 
-## micro simulators (simulators that might log data, etc.)
+ - [ ] Command line: decide on what to do to emulate cfg.json through command line parsing. See `cmdline.odin`
+
+## micro viewing simulators (simulators that might log data, etc.)
  - [ ] Calling micro simulators from super simulator (core simulator). Load dll etc.
- - [ ] Event queue for micro simulators. Example: GPIOx pin value changes, SysTick interrupts, etc.
- - [ ] Subscribing to events to avoid sending unwanted events ?
- - [ ] Micro simulator example
+ - [x] Event queue for micro simulators. Example: GPIOx pin value changes, SysTick interrupts, etc.
+ - [x] Subscribing to events to avoid sending unwanted events ?
+ - [ ] Micro viewing simulator example
+
+## micro emulating simulators
+ - [ ] Make a slightly different interface for emulating simulators, for example for emulating an AFE (Analog Front End)
+ - [ ] Micro emulating simulator example
 
 ## Peripherals
  - [ ] Finish SCB peripheral (only VTOR register is usable)

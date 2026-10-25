@@ -101,7 +101,7 @@ build :: proc(opt: Build_Options) -> bool
     "-DSTM32H723xx",
     "-DSIMULATOR_BUILD",
     "-shared",
-    "-o", "board." + dynlib.LIBRARY_FILE_EXTENSION,
+    "-o", OUTPUT_DIR + "/test." + dynlib.LIBRARY_FILE_EXTENSION,
     "-Wall", "-Wextra",
     "-I", "example/inc",
     "-Wl,--gc-sections",
@@ -180,7 +180,10 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
     case runtime.Type_Info_Type_Id: { assert(false, "unsupported") }
     case runtime.Type_Info_Enumerated_Array: { assert(false, "unsupported") }
     case runtime.Type_Info_Union: { assert(false, "unsupported") }
-    case runtime.Type_Info_Map: { assert(false, "unsupported") }
+    case runtime.Type_Info_Map: {
+      write_string(f, fmt.tprintf("uint8_t %s[%d]", name, size_of(runtime.Raw_Map)))
+      return
+    }
     case runtime.Type_Info_Simd_Vector: { assert(false, "unsupported") }
     case runtime.Type_Info_Matrix: { assert(false, "unsupported") }
     case runtime.Type_Info_Soa_Pointer: { assert(false, "unsupported") }
@@ -257,19 +260,21 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
     }
 
     case runtime.Type_Info_Procedure: {
-      CDecl :: 3
-      fmt.assertf(v.convention == runtime.Calling_Convention(CDecl),
-        "Calling convention must be Cdecl (\"c\") to translate it into C function pointer",
-      )
+      // commented out because odin "core:sync/chan" chan.Chan uses procedures as attributes
+      //CDecl :: 3
+      //fmt.assertf(v.convention == runtime.Calling_Convention(CDecl),
+      //  "Calling convention must be Cdecl (\"c\") to translate it into C function pointer",
+      //)
       fmt.assertf(!v.variadic, "varadic procedures are not supported")
 
       result_types: []^runtime.Type_Info
       if v.results != nil {
         results := v.results.variant.(runtime.Type_Info_Parameters)
-        fmt.assertf(len(results.types) <= 1, "procedures with more than one return are not supported")
+        // commented out because odin "core:sync/chan" chan.Chan uses procedures with more than 1 return value
+        //fmt.assertf(len(results.types) <= 1, "procedures with more than one return are not supported")
         result_types = results.types
       }
-        
+
       if len(result_types) == 0 {
         write_string(f, "void (*")
       } else {
@@ -295,7 +300,8 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
 
     case runtime.Type_Info_Array: {
       C_print_any_elem_from_odin(f, v.elem, "", known_type_names, indentation, indent_width)
-      write_string(f, fmt.tprintf("[%d]", v.count))
+      write_string(f, fmt.tprintf("%s[%d]", name, v.count))
+      return
     }
 
     case runtime.Type_Info_Dynamic_Array: {
@@ -397,6 +403,7 @@ do_usim_codegen :: proc() -> bool
     "Event",
     "GPIO_Mod",
     "API",
+    "Recv_Channel",
   }
 
   write_string(f,
@@ -433,6 +440,12 @@ do_usim_codegen :: proc() -> bool
   event_struct := event_struct_named.base.variant.(runtime.Type_Info_Struct)
   C_struct_from_odin_struct(f, event_struct, known_structs, prefix = "USim_")
   write_string(f, "} USim_Event;\n\n")
+
+  write_string(f, "typedef struct USim_Recv_Channel {\n")
+  recv_channel_named := type_info_of(usim.Recv_Channel).variant.(runtime.Type_Info_Named)
+  recv_channel := recv_channel_named.base.variant.(runtime.Type_Info_Struct)
+  C_struct_from_odin_struct(f, recv_channel, known_structs, prefix = "USim_")
+  write_string(f, "} USim_Recv_Channel;\n\n")
 
   write_string(f, "typedef struct USim_API {\n")
   api_struct_named := type_info_of(usim.API).variant.(runtime.Type_Info_Named)
@@ -476,7 +489,7 @@ main :: proc()
   if opt.run {
     ok := run_command({
       "sim",
-      "--board", "board." + dynlib.LIBRARY_FILE_EXTENSION,
+      "--cfg", "cfg.json",
       "--max-iterations", "1000_000",
     })
     if !ok {

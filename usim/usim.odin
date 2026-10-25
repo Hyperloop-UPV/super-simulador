@@ -7,15 +7,36 @@ package usim
 
 import "core:dynlib"
 
+/*
+maximum usims at the same time, limited by a couple of factors
+*/
+MAX_USIMS :: 64
+
+/*
+Maximum elements in the event queue channel
+*/
+QUEUE_MAX_SIZE :: 256
+
 /* As a bit of a warning: `Sim_add_event_watch` should be used very sparingly
  * since it makes the core simulator call the function ptr
  * instead of just add the event to the queue which is a much faster operation.
  */
 
+/*
+Provides a way to distinguish between usims to the core simulator
+*/
+Id :: distinct u64
+
+Recv_Channel :: struct {
+  impl: rawptr,
+}
+
 Event_Kind :: enum u32 {
   /* when the simulator is done, it will enqueue a Quit event */
   Quit = 0,
   GPIO_Modified = 1,
+
+  Count = 2,
 }
 
 GPIO_Mod :: struct {
@@ -32,7 +53,7 @@ Event :: struct {
 
 /*
 Procedure that will be called after starting up peripherals for a specific board.
-Will be called for every board dll which this usim is attached to.
+Will be called once for every board dll which this usim is attached to.
 
 Arguments:
  - `memory`: An already initialized ^peripherals.Memory, should not be written to, only read
@@ -41,7 +62,7 @@ Arguments:
 Returns:
  - a rawptr (same as void*), will be given to `Update_Proc`
 */
-Init_Proc :: #type proc "c"(memory: rawptr, api: ^API, board_name: cstring) -> rawptr
+Init_Proc :: #type proc "c"(memory: rawptr, api: ^API, board_name: cstring, usim_id: Id) -> rawptr
 
 /*
 Procedure that will be called in a loop until `sim_is_done` is true.
@@ -68,11 +89,13 @@ Deinit_Proc :: #type proc "c"(usim_mem: rawptr)
 Procedure to call in `Init_Proc` to subscribe to an event kind
 
 Arguments:
+ - `id`: The usim id given by `Init_Proc`
+ - `memory`: The memory given by `Init_Proc`
  - `kind`: the event kind to subscribe to
 Returns:
  - if the operation succeeded or not
 */
-Event_Subscribe_Proc :: #type proc "c"(kind: Event_Kind) -> bool
+Event_Subscribe_Proc :: #type proc "c"(memory: rawptr, kind: Event_Kind, id: Id) -> bool
 
 /*
 Procedure to call in `Update_Proc` to check for any new events in this usim's event queue
@@ -82,7 +105,7 @@ Arguments:
 Returns:
  - if there was an event
 */
-Poll_Event_Proc :: #type proc "c"(event: ^Event) -> bool
+Poll_Event_Proc :: #type proc "c"(channel: Recv_Channel, event: ^Event) -> bool
 
 /*
 Procedure to call in `Update_Proc` to wait for the next event in this usim's event queue
@@ -92,7 +115,7 @@ Arguments:
 Returns:
  - if there was an error while trying to gather the newest event
 */
-Wait_Event_Proc :: #type proc "c"(event: ^Event) -> bool
+Wait_Event_Proc :: #type proc "c"(channel: Recv_Channel, event: ^Event) -> bool
 
 /* callback type for `Add_Event_Watch_Proc` */
 Event_Watch_Callback_Proc :: #type proc "c"(event: ^Event, ctx: rawptr)
@@ -103,6 +126,8 @@ Procedure to call in `Init_Proc` to handle events of a specific kind in a callba
 WARNING: This callback will be called in a different thread and you won't be getting an event of that kind in `poll_event` or in `wait_event`. Also use this sparingly because it will interrupt the board's running thread.
 
 Arguments:
+ - `id`: The usim id given by `Init_Proc`
+ - `memory`: The memory given by `Init_Proc`
  - `kind`: the event kind to be handled in the callback
  - `callback`: the callback that handles this event
  - `ctx`: the context to give to the callback
@@ -110,7 +135,9 @@ Returns:
  - if there was an error while trying to add the callback
 */
 Add_Event_Watch_Proc :: #type proc "c"( \
+  memory: rawptr, \
   kind: Event_Kind, \
+  id: Id, \
   callback: Event_Watch_Callback_Proc, \
   ctx: rawptr, \
 ) -> bool
@@ -123,6 +150,12 @@ API :: struct {
   wait_event: Wait_Event_Proc,
   add_event_watch: Add_Event_Watch_Proc,
 
+  /*
+  Recieve channel for usim, used internally in `poll_event` and `wait_event`
+  will be chan.Chan(Event, .Recv)
+  */
+  channel: Recv_Channel,
+
   /* api from usim to core sim (taken from dll) */
 
   /* USim_init is expected to be found */
@@ -132,5 +165,5 @@ API :: struct {
   /* USim_deinit is expected to be found */
   _deinit: Deinit_Proc,
 
-  library: dynlib.Library,
+  _library: dynlib.Library,
 }

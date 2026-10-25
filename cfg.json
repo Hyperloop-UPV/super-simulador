@@ -1,0 +1,16 @@
+{
+  "$schema": "misc/sim-cfg.schema.json",
+
+  "boards": [
+    "bin/test"
+  ],
+
+  "usims": [
+    {
+      "dll": "bin/usim_example",
+      "attached_boards": [
+        "test"
+      ]
+    }
+  ]
+}

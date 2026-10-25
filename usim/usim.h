@@ -10,6 +10,7 @@
 typedef enum USim_Event_Kind {
   Event_Kind_Quit = 0,
   Event_Kind_GPIO_Modified = 1,
+  Event_Kind_Count = 2,
 } USim_Event_Kind;
 
 typedef struct USim_GPIO_Mod {
@@ -24,15 +25,20 @@ typedef struct USim_Event {
   } as;
 } USim_Event;
 
+typedef struct USim_Recv_Channel {
+  void *impl;
+} USim_Recv_Channel;
+
 typedef struct USim_API {
-  bool (*event_subscribe)(USim_Event_Kind kind);
-  bool (*poll_event)(USim_Event *event);
-  bool (*wait_event)(USim_Event *event);
-  bool (*add_event_watch)(USim_Event_Kind kind, void (*callback)(USim_Event *event, void *ctx), void *ctx);
-  void *(*_init)(void *memory, USim_API *api, const char* board_name);
+  bool (*event_subscribe)(void *memory, USim_Event_Kind kind, uint64_t id);
+  bool (*poll_event)(USim_Recv_Channel channel, USim_Event *event);
+  bool (*wait_event)(USim_Recv_Channel channel, USim_Event *event);
+  bool (*add_event_watch)(void *memory, USim_Event_Kind kind, uint64_t id, void (*callback)(USim_Event *event, void *ctx), void *ctx);
+  USim_Recv_Channel channel;
+  void *(*_init)(void *memory, USim_API *api, const char* board_name, uint64_t usim_id);
   bool (*_update)(void *usim_mem);
   void (*_deinit)(void *usim_mem);
-  void *library;
+  void *_library;
 } USim_API;
 
 #endif // USIM_H

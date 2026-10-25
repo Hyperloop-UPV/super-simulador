@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "boards": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "board dlls to load, the dll extension will be appended when parsing this json"
+    },
+
+    "usims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dll": {
+            "type": "string",
+            "description": "usim dll to load, the dll extension will be appended when parsing this json"
+          },
+          "attached_boards": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "boards to attach to using this usim, the name must be the filename of the board dll removing the extension"
+          }
+        }
+      }
+    }
+  }
+}
