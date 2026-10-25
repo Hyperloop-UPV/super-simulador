@@ -46,6 +46,7 @@ GPIO_Mod :: struct {
 
 Event :: struct {
   kind: Event_Kind,
+  board_name: cstring,
   as: struct #raw_union {
     gpio_mod: GPIO_Mod,
   },

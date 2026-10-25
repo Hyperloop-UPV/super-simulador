@@ -15,6 +15,7 @@ import "core:time"
 import "core:thread"
 import "core:dynlib"
 import "core:reflect"
+import "core:strings"
 import "core:sync/chan"
 import "core:mem/virtual"
 
@@ -240,7 +241,8 @@ create_board :: proc(dllpath: string, channels: []chan.Chan(usim.Event, .Both)) 
 
   init_memory(memory)
   memory.board_api = load_board_api(dllpath)
-  
+  memory.board_name = strings.clone_to_cstring(os.short_stem(dllpath))
+
   simArrayConst := peripherals.SimArray
   memory.simArray = make([]peripherals.Sim_Data, len(simArrayConst))
 
@@ -283,6 +285,7 @@ destroy_board :: proc(memory: ^peripherals.Memory)
 {
   dynlib.unload_library(memory.board_api.library)
 
+  delete(memory.board_name)
   delete(memory.channels)
   // delete dynamically created USim_Event_Watch_Data slices
   for _, value in memory.event_watch {

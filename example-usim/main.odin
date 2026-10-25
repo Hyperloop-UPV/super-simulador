@@ -27,7 +27,7 @@ USim_init :: proc "c"(memory: rawptr, api: ^usim.API, board_name: cstring, usim_
     usim_mem.odin_ctx = context
     usim_mem.api = api
   } else {
-    usim_mem = cast(^USim_Memory)usim_rawmem
+    usim_mem = (cast(^^USim_Memory)usim_rawmem)^
   }
   context = usim_mem.odin_ctx
 
@@ -54,8 +54,9 @@ USim_update :: proc "c"(usim_rawmem: rawptr) -> (end_early: bool)
       case .Count: {}
 
       case .GPIO_Modified: {
-        fmt.printfln("GPIO_%c modified! new value: 0x%x",
+        fmt.printfln("GPIO_%c modified in %s board. New value: 0x%04x",
           event.as.gpio_mod.gpio_char,
+          event.board_name,
           event.as.gpio_mod.value,
         )
       }

@@ -378,6 +378,7 @@ Memory :: struct {
   totalMem: uint,
 
   board_api: Board_API,
+  board_name: cstring,
   // One handler per page (256 pages max, unless we use GPV)
   handlers: [dynamic; 256]Handler_Proc,
   peripheral_contexts: [dynamic; 256]rawptr,
@@ -415,6 +416,8 @@ enqueue_event :: proc(memory: ^Memory, event: ^usim.Event)
     // no subscribers to this specific event
     return
   }
+
+  event.board_name = memory.board_name
 
   for subs != 0 {
     idx := intrinsics.count_trailing_zeros(subs)
