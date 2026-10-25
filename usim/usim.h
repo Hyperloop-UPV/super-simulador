@@ -8,11 +8,20 @@
 #include <stdbool.h>
 
 typedef enum USim_Event_Kind {
-  Quit = 0,
+  Event_Kind_Quit = 0,
+  Event_Kind_GPIO_Modified = 1,
 } USim_Event_Kind;
+
+typedef struct USim_GPIO_Mod {
+  uint8_t gpio_char;
+  uint32_t value;
+} USim_GPIO_Mod;
 
 typedef struct USim_Event {
   USim_Event_Kind kind;
+  union {
+    USim_GPIO_Mod gpio_mod;
+  } as;
 } USim_Event;
 
 typedef struct USim_API {

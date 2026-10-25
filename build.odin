@@ -158,8 +158,12 @@ write_string :: proc(f: ^os.File, s: string) {
   }
 }
 
-C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: string, known_type_names: []string, prefix := "USim_")
+C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: string, known_type_names: []string, indentation := 2, indent_width := 2, prefix := "USim_")
 {
+  indent_buf: [32]u8
+  mem.set(&indent_buf, ' ', len(indent_buf))
+  indent := string(indent_buf[:indentation])
+
   switch v in reflect.type_info_base(type).variant {
     case runtime.Type_Info_Named: {
       // should not be a field in a struct
@@ -170,24 +174,31 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
       assert(false)
     }
 
-    case runtime.Type_Info_Complex: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Quaternion: { fmt.assertf(false, "unsupported") } 
-    case runtime.Type_Info_Any: { fmt.assertf(false, "unsupported") } 
-    case runtime.Type_Info_Type_Id: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Enumerated_Array: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Union: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Map: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Simd_Vector: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Matrix: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Soa_Pointer: { fmt.assertf(false, "unsupported") }
-    case runtime.Type_Info_Bit_Field: { fmt.assertf(false, "unsupported") }
+    case runtime.Type_Info_Complex: { assert(false, "unsupported") }
+    case runtime.Type_Info_Quaternion: { assert(false, "unsupported") } 
+    case runtime.Type_Info_Any: { assert(false, "unsupported") } 
+    case runtime.Type_Info_Type_Id: { assert(false, "unsupported") }
+    case runtime.Type_Info_Enumerated_Array: { assert(false, "unsupported") }
+    case runtime.Type_Info_Union: { assert(false, "unsupported") }
+    case runtime.Type_Info_Map: { assert(false, "unsupported") }
+    case runtime.Type_Info_Simd_Vector: { assert(false, "unsupported") }
+    case runtime.Type_Info_Matrix: { assert(false, "unsupported") }
+    case runtime.Type_Info_Soa_Pointer: { assert(false, "unsupported") }
+    case runtime.Type_Info_Bit_Field: { assert(false, "unsupported") }
     // NOTE: not sure about fixed capacity dynamic array, might be easy but I don't
     //       think I have debug info for it so I can't know the implementation without
     //       looking at the odin compiler source code
-    case runtime.Type_Info_Fixed_Capacity_Dynamic_Array: { fmt.assertf(false, "unsupported") }
+    case runtime.Type_Info_Fixed_Capacity_Dynamic_Array: { assert(false, "unsupported") }
 
     case runtime.Type_Info_Integer: {
-      type_name := "int" if v.signed else "unsigned int"
+      type_name: string
+      switch type.size {
+        case 1: type_name = "int8_t" if v.signed else "uint8_t"
+        case 2: type_name = "int16_t" if v.signed else "uint16_t"
+        case 4: type_name = "int32_t" if v.signed else "uint32_t"
+        case 8: type_name = "int64_t" if v.signed else "uint64_t"
+        case: assert(false, "unsupported integer size")
+      }
       s := fmt.tprintf("%s", type_name)
       write_string(f, s)
     }
@@ -197,7 +208,13 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
     }
 
     case runtime.Type_Info_Float: {
-      write_string(f, "float")
+      type_name: string
+      switch type.size {
+        case 4: type_name = "float"
+        case 8: type_name = "double"
+        case: assert(false, "unsupported float size")
+      }
+      write_string(f, type_name)
     }
 
     case runtime.Type_Info_String: {
@@ -219,7 +236,7 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
         write_string(f, name)
         return
       } else {
-        C_print_any_elem_from_odin(f, v.elem, "", known_type_names)
+        C_print_any_elem_from_odin(f, v.elem, "", known_type_names, indentation, indent_width)
         write_string(f, "*")
         write_string(f, name)
         return
@@ -232,7 +249,7 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
         write_string(f, name)
         return
       } else {
-        C_print_any_elem_from_odin(f, v.elem, "", known_type_names)
+        C_print_any_elem_from_odin(f, v.elem, "", known_type_names, indentation, indent_width)
         write_string(f, "*")
         write_string(f, name)
         return
@@ -265,7 +282,7 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
       if v.params != nil {
         params := v.params.variant.(runtime.Type_Info_Parameters)
         for idx := 0; idx < len(params.types); idx += 1 {
-          C_print_any_elem_from_odin(f, params.types[idx], params.names[idx], known_type_names)
+          C_print_any_elem_from_odin(f, params.types[idx], params.names[idx], known_type_names, indentation, indent_width)
           if idx != (len(params.types) - 1) {
             write_string(f, ", ")
           }
@@ -277,40 +294,48 @@ C_print_any_elem_from_odin :: proc(f: ^os.File, type: ^reflect.Type_Info, name: 
     }
 
     case runtime.Type_Info_Array: {
-      C_print_any_elem_from_odin(f, v.elem, "", known_type_names)
+      C_print_any_elem_from_odin(f, v.elem, "", known_type_names, indentation, indent_width)
       write_string(f, fmt.tprintf("[%d]", v.count))
     }
 
     case runtime.Type_Info_Dynamic_Array: {
       // [dynamic]type -> struct{ type* items; size_t count; size_t capacity; }
       write_string(f, "struct{ ")
-      C_print_any_elem_from_odin(f, v.elem, "", known_type_names)
+      C_print_any_elem_from_odin(f, v.elem, "", known_type_names, indentation, indent_width)
       write_string(f, "* items; size_t count; size_t capacity; }")
     }
 
     case runtime.Type_Info_Slice: {
       // []type -> struct{ const type* items; size_t count; }
       write_string(f, "struct{ const ")
-      C_print_any_elem_from_odin(f, v.elem, "", known_type_names)
+      C_print_any_elem_from_odin(f, v.elem, "", known_type_names, indentation, indent_width)
       write_string(f, "* items; size_t count; }")
     }
 
     case runtime.Type_Info_Struct: {
-      named := type.variant.(runtime.Type_Info_Named)
-      _, found := slice.linear_search(known_type_names, named.name)
-      if found {
-        write_string(f, prefix)
-        write_string(f, named.name)
-      } else {
+      found: bool = false
+
+      named, is_named := type.variant.(runtime.Type_Info_Named)
+      if is_named {
+        _, found = slice.linear_search(known_type_names, named.name)
+        if found {
+          write_string(f, prefix)
+          write_string(f, named.name)
+        }
+      }
+
+      if !found {
         if .raw_union in v.flags {
-          write_string(f, "union{ ")
+          write_string(f, "union {\n")
         } else {
-          write_string(f, "struct{ ")
+          write_string(f, "struct {\n")
         }
         for idx: i32 = 0; idx < v.field_count; idx += 1 {
-          C_print_any_elem_from_odin(f, v.types[idx], v.names[idx], known_type_names)
-          write_string(f, "; ")
+          write_string(f, indent)
+          C_print_any_elem_from_odin(f, v.types[idx], v.names[idx], known_type_names, indentation + indent_width, indent_width)
+          write_string(f, ";\n")
         }
+        write_string(f, indent[:len(indent) - indent_width])
         write_string(f, "}")
       }
     }
@@ -356,7 +381,7 @@ C_struct_from_odin_struct :: proc(f: ^os.File, t: reflect.Type_Info_Struct, know
       }
     }
 
-    C_print_any_elem_from_odin(f, type, name, known_type_names, prefix)
+    C_print_any_elem_from_odin(f, type, name, known_type_names, indentation + indent_width, indent_width, prefix)
     write_string(f, ";\n")
   }
 }
@@ -370,6 +395,7 @@ do_usim_codegen :: proc() -> bool
 
   known_structs := []string{
     "Event",
+    "GPIO_Mod",
     "API",
   }
 
@@ -391,10 +417,16 @@ do_usim_codegen :: proc() -> bool
 
   write_string(f, "typedef enum USim_Event_Kind {\n")
   for kind in reflect.enum_fields_zipped(usim.Event_Kind) {
-    line := fmt.tprintfln("  %s = %v,", kind.name, i64(kind.value))
+    line := fmt.tprintfln("  %s%s = %v,", "Event_Kind_", kind.name, i64(kind.value))
     write_string(f, line)
   }
   write_string(f, "} USim_Event_Kind;\n\n")
+
+  write_string(f, "typedef struct USim_GPIO_Mod {\n")
+  gpio_mod_named := type_info_of(usim.GPIO_Mod).variant.(runtime.Type_Info_Named)
+  gpio_mod := gpio_mod_named.base.variant.(runtime.Type_Info_Struct)
+  C_struct_from_odin_struct(f, gpio_mod, known_structs, prefix = "USim_")
+  write_string(f, "} USim_GPIO_Mod;\n\n")
 
   write_string(f, "typedef struct USim_Event {\n")
   event_struct_named := type_info_of(usim.Event).variant.(runtime.Type_Info_Named)

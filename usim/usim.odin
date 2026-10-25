@@ -15,10 +15,19 @@ import "core:dynlib"
 Event_Kind :: enum u32 {
   /* when the simulator is done, it will enqueue a Quit event */
   Quit = 0,
+  GPIO_Modified = 1,
+}
+
+GPIO_Mod :: struct {
+  gpio_char: u8,
+  value: u32,
 }
 
 Event :: struct {
   kind: Event_Kind,
+  as: struct #raw_union {
+    gpio_mod: GPIO_Mod,
+  },
 }
 
 /*
