@@ -21,7 +21,7 @@ SIM_CMDLINE_PARSING_STYLE :: flags.Parsing_Style.Unix
 
 @(private="file")
 Sim_Options_SemiParsed :: struct {
-  board: [dynamic]string `usage:"Board dynamic libraries"`,
+  //board: [dynamic]string `usage:"Board dynamic libraries"`,
   //usim: [dynamic]string `usage:"Micro simulators attached"`,
   max_iterations: int `usage:"Max iterations for the simulator"`,
   max_time: string `usage:"Max time for the simulator, starts counting after most of the initialization"`,
