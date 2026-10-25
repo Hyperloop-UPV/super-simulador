@@ -5,10 +5,11 @@
 #+vet shadowing
 package peripherals
 
-import "core:log"
+// import "core:log"
 import "core:time"
 
 import mcu "mcu:stm32h723xx"
+import "../../usim"
 
 GPIO_Context :: struct {
   // to distinguish between gpios, so we can use a single handler and step procs
@@ -62,13 +63,19 @@ GPIO_handler :: proc(rawctx, this_rawctx: rawptr)
   }
 
   if is_pin_on_prev != gpio.is_pin_on {
-    buf: [16]u8
-    idx: u8 = 0
-    #reverse for pin in gpio.is_pin_on {
-      buf[idx] = pin ? '1' : '0'
-      idx += 1
-    }
-    log.infof("GPIO%c pins: %v", gpio.letter, string(buf[:]))
+    event: usim.Event
+    event.kind = .GPIO_Modified
+    event.as.gpio_mod.gpio_char = gpio.letter
+    event.as.gpio_mod.value = gpio.gpio.BSRR
+    enqueue_event(mem, &event)
+
+    //buf: [16]u8
+    //idx: u8 = 0
+    //#reverse for pin in gpio.is_pin_on {
+    //  buf[idx] = pin ? '1' : '0'
+    //  idx += 1
+    //}
+    //log.infof("GPIO%c pins: %v", gpio.letter, string(buf[:]))
   }
 }
 

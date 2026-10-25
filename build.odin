@@ -73,6 +73,20 @@ run_command :: proc(cmd: []string, cwd := ".") -> (ok: bool)
   return
 }
 
+append_odin_options :: proc(cmd: ^[dynamic; 256]string, opt: Build_Options)
+{
+  if opt.mode == .debug || opt.mode == .rel_debug {
+    append(cmd, "-debug")
+  }
+
+  if opt.mode == .release || opt.mode == .rel_debug {
+    append(cmd, "-o:speed", "-no-type-assert", "-no-bounds-check")
+  } else {
+    // it's getting annoying for debugging
+    append(cmd, "-no-bounds-check")
+  }
+}
+
 build :: proc(opt: Build_Options) -> bool
 {
   cmd: [dynamic; 256]string
@@ -83,27 +97,30 @@ build :: proc(opt: Build_Options) -> bool
     /* import mcu "mcu:stm32h723xx" */
     "-collection:mcu=mcu",
   )
+  append_odin_options(&cmd, opt)
+  run_command(cmd[:]) or_return
+  clear(&cmd)
 
-  if opt.mode == .debug || opt.mode == .rel_debug {
-    append(&cmd, "-debug")
-  }
-
-  if opt.mode == .release || opt.mode == .rel_debug {
-    append(&cmd, "-o:speed", "-no-type-assert", "-no-bounds-check")
-  }
-
+  append(&cmd,
+    "odin", "build", "example-usim",
+    "-out:bin/usim_example." + dynlib.LIBRARY_FILE_EXTENSION,
+    "-error-pos-style:unix",
+    "-collection:mcu=mcu",
+    "-build-mode:shared",
+  )
+  append_odin_options(&cmd, opt)
   run_command(cmd[:]) or_return
   clear(&cmd)
 
   append(&cmd, "gcc",
-    "example/src/main.cpp",
-    "example/src/system_stm32h7xx.c",
+    "example-board/src/main.cpp",
+    "example-board/src/system_stm32h7xx.c",
     "-DSTM32H723xx",
     "-DSIMULATOR_BUILD",
     "-shared",
     "-o", OUTPUT_DIR + "/test." + dynlib.LIBRARY_FILE_EXTENSION,
     "-Wall", "-Wextra",
-    "-I", "example/inc",
+    "-I", "example-board/inc",
     "-Wl,--gc-sections",
   )
 

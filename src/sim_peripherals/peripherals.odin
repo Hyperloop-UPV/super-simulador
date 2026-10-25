@@ -8,7 +8,9 @@ package peripherals
 /* NOTE: GPV (Global Programmer View) is alone 284KiB :( */
   
 import "base:runtime"
+import "base:intrinsics"
 
+import "core:log"
 import "core:mem"
 import "core:time"
 import "core:dynlib"
@@ -406,3 +408,23 @@ Memory :: struct {
 /* see Memory.subscibed_events */
 #assert(usim.MAX_USIMS <= 64)
 
+enqueue_event :: proc(memory: ^Memory, event: ^usim.Event)
+{
+  subs, found := memory.subscribed_events[event.kind]
+  if !found {
+    // no subscribers to this specific event
+    return
+  }
+
+  for subs != 0 {
+    idx := intrinsics.count_trailing_zeros(subs)
+    subs &= ~(1 << idx)
+
+    ch := memory.channels[idx]
+    // needs some amount of time for timeout because another writer could be blocking
+    status := chan.send_with_timeout(ch, event^, 8*time.Microsecond)
+    if status != .Ok {
+      log.warnf("Could not add event in queue for usim %d: Queue full", idx)
+    }
+  }
+}

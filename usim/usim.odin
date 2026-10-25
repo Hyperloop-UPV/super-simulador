@@ -59,10 +59,13 @@ Arguments:
  - `memory`: An already initialized ^peripherals.Memory, should not be written to, only read
  - `api`: The usim api, includes own functions but mostly to access [`Sim_subscribe_event`,`Sim_wait_event`,`Sim_add_event_watch`,`Sim_poll_event`]
  - `board_name`: The board name that was attached to the usim
+ - `usim_mem`: A pointer to be filled in with the usim memory given to `Update_Proc` and `Deinit_Proc`, if it is the first call, `usim_mem^` will be nil (`*usim_mem`), else it will be a prevously returned value from Init_Proc
 Returns:
- - a rawptr (same as void*), will be given to `Update_Proc`
+ - If initialization succeeded
+
+If this returns false, it won't be called again for any other boards
 */
-Init_Proc :: #type proc "c"(memory: rawptr, api: ^API, board_name: cstring, usim_id: Id) -> rawptr
+Init_Proc :: #type proc "c"(memory: rawptr, api: ^API, board_name: cstring, usim_id: Id, usim_mem: ^rawptr) -> bool
 
 /*
 Procedure that will be called in a loop until `sim_is_done` is true.

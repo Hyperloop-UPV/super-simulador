@@ -35,7 +35,7 @@ typedef struct USim_API {
   bool (*wait_event)(USim_Recv_Channel channel, USim_Event *event);
   bool (*add_event_watch)(void *memory, USim_Event_Kind kind, uint64_t id, void (*callback)(USim_Event *event, void *ctx), void *ctx);
   USim_Recv_Channel channel;
-  void *(*_init)(void *memory, USim_API *api, const char* board_name, uint64_t usim_id);
+  bool (*_init)(void *memory, USim_API *api, const char* board_name, uint64_t usim_id, void **usim_mem);
   bool (*_update)(void *usim_mem);
   void (*_deinit)(void *usim_mem);
   void *_library;

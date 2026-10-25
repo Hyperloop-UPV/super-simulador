@@ -62,6 +62,7 @@ USim_Thread_Data :: struct {
   usim_dll: string,
   usim_api: usim.API,
   global_should_quit: ^bool,
+  channel: chan.Chan(usim.Event, .Recv),
   usim_id: usim.Id,
 }
 
@@ -256,7 +257,10 @@ create_board :: proc(dllpath: string, channels: []chan.Chan(usim.Event, .Both)) 
     mem_current = rawptr(uintptr(mem_current) + uintptr(pageCount * u32(mem.PAGE_SIZE)))
 
     memory.simArray[idx] = simArrayConst[idx]
-    memory.simArray[idx].this_ctx = memory.simArray[idx].setup(memory)
+
+    if memory.simArray[idx].setup != peripherals.Stub_setup {
+      memory.simArray[idx].this_ctx = memory.simArray[idx].setup(memory)
+    }
 
     for pageIdx: u32 = 0; pageIdx < pageCount; pageIdx += 1 {
       append(&memory.handlers, memory.simArray[idx].handler)
@@ -411,12 +415,25 @@ usim_thread_proc :: proc(rawdata: rawptr)
   data := cast(^USim_Thread_Data)rawdata
 
   data.usim_api = load_usim_api(data.usim_dll)
+  data.usim_api.event_subscribe = USim_event_subscribe
+  data.usim_api.poll_event = USim_poll_event
+  data.usim_api.wait_event = USim_wait_event
+  data.usim_api.add_event_watch = USim_add_event_watch
+  data.usim_api.channel.impl = data.channel.impl
 
   ctx: rawptr
+  init_ok: bool = true
   for i := 0; i < len(data.attached_memories); i += 1 {
     memory := data.attached_memories[i]
     name := data.board_names[i]
-    ctx = data.usim_api._init(memory, &data.usim_api, name, data.usim_id)
+    init_ok = init_ok &&
+      data.usim_api._init(memory, &data.usim_api, name, data.usim_id, &ctx)
+  }
+
+  if !init_ok {
+    data.usim_api._deinit(ctx)
+    dynlib.unload_library(data.usim_api._library)
+    return
   }
 
   quit: bool
@@ -425,6 +442,8 @@ usim_thread_proc :: proc(rawdata: rawptr)
     // sleep is expected to be done in update() callback
   }
   data.usim_api._deinit(ctx)
+
+  dynlib.unload_library(data.usim_api._library)
 }
 
 /* --------------------------------------------- */
@@ -512,16 +531,9 @@ main :: proc()
     delete(channels)
   }
   usims := make([]USim_Thread_Data, len(opt.usim))
-  defer {
-    for u in usims {
-      delete(u.attached_memories)
-      for name in u.board_names {
-        delete(name)
-      }
-      delete(u.board_names)
-    }
-    delete(usims)
-  }
+  defer delete(usims)
+  usim_threads := make([]^thread.Thread, len(opt.usim))
+  defer delete(usim_threads)
 
   /* --------------------------------------------- */
 
@@ -542,11 +554,42 @@ main :: proc()
     memories[board_idx] = create_board(board, channels)
   }
 
-  //for usim_dll, usim_idx in opt.usim {
-    //td := USim_Thread_Data {
-    //
-    //}
-  //}
+  global_should_quit: bool
+  for u, usim_idx in opt.usim {
+    td := &usims[usim_idx]
+    td^ = {
+      board_names = u.attached_boards,
+      usim_dll = u.dll,
+      global_should_quit = &global_should_quit,
+      usim_id = usim.Id(usim_idx),
+    }
+    td.channel = chan.as_recv(channels[usim_idx])
+
+    td.attached_memories = make([]^peripherals.Memory, len(u.attached_boards))
+    for attached, mem_idx in u.attached_boards {
+      board_name := string(attached)
+      found := false
+      for board, board_idx in opt.board {
+        if os.short_stem(board) == board_name {
+          td.attached_memories[mem_idx] = memories[board_idx]
+          found = true
+        }
+      }
+
+      if !found {
+        log.errorf("board %s requested by usim %s was not found in board array", attached, u.dll)
+        os.exit(1)
+      }
+    }
+
+    usim_threads[usim_idx] = launch_usim(td)
+  }
+
+  defer {
+    for u in usims {
+      delete(u.attached_memories)
+    }
+  }
 
   log.infof("Total page count: %v", memories[0].pageCount * len(opt.board))
   log.infof("Total page size: %v", memories[0].totalMem * len(opt.board))
@@ -559,7 +602,6 @@ main :: proc()
 
   /* --------------------------------------------- */
 
-  global_should_quit: bool
   step_time := 10 * time.Microsecond
   thread_data := make([]FW_Thread_Data, len(opt.board))
   defer delete(thread_data)
@@ -581,4 +623,8 @@ main :: proc()
     // sleep until all board_threads finish
     thread.join_multiple(..board_threads[:])
   }
+
+  // wait until all usim threads quit 'voluntarily'
+  global_should_quit = true
+  thread.join_multiple(..usim_threads[:])
 }
