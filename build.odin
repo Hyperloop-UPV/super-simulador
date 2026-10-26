@@ -102,7 +102,7 @@ build :: proc(opt: Build_Options) -> bool
   clear(&cmd)
 
   append(&cmd,
-    "odin", "build", "example-usim",
+    "odin", "build", "example-usim/first",
     "-out:bin/usim_example." + dynlib.LIBRARY_FILE_EXTENSION,
     "-error-pos-style:unix",
     "-collection:mcu=mcu",
