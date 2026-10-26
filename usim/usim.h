@@ -20,6 +20,7 @@ typedef struct USim_GPIO_Mod {
 
 typedef struct USim_Event {
   USim_Event_Kind kind;
+  const char* board_name;
   union {
     USim_GPIO_Mod gpio_mod;
   } as;

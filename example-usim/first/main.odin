@@ -9,7 +9,7 @@ import "base:runtime"
 import "core:fmt"
 import "core:time"
 
-import "../usim"
+import "../../usim"
 
 USim_Memory :: struct {
   odin_ctx: runtime.Context,
