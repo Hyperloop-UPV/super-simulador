@@ -411,7 +411,15 @@ Memory :: struct {
 
 enqueue_event :: proc(memory: ^Memory, event: ^usim.Event)
 {
-  subs, found := memory.subscribed_events[event.kind]
+  subs: u64
+  watch_data, found := memory.event_watch[event.kind]
+  if found {
+    for wd in watch_data {
+      wd.callback(event, wd.ctx)
+    }
+  }
+
+  subs, found = memory.subscribed_events[event.kind]
   if !found {
     // no subscribers to this specific event
     return

@@ -127,7 +127,8 @@ Event_Watch_Callback_Proc :: #type proc "c"(event: ^Event, ctx: rawptr)
 /*
 Procedure to call in `Init_Proc` to handle events of a specific kind in a callback.
 
-WARNING: This callback will be called in a different thread and you won't be getting an event of that kind in `poll_event` or in `wait_event`. Also use this sparingly because it will interrupt the board's running thread.
+WARNING: This callback will be called in a different thread and it is separate from the event queue from `Event_Subscribe_Proc`.
+         Use this sparingly because it will interrupt the board's running thread.
 
 Arguments:
  - `id`: The usim id given by `Init_Proc`
