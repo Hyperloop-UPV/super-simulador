@@ -18,7 +18,7 @@ typedef struct USim_GPIO_Mod {
   uint32_t value;
 } USim_GPIO_Mod;
 
-typedef struct USim_Event_Info {
+typedef union USim_Event_Info {
   USim_GPIO_Mod gpio_mod;
 } USim_Event_Info;
 
@@ -34,14 +34,14 @@ typedef struct USim_Recv_Channel {
 } USim_Recv_Channel;
 
 typedef struct USim_API {
-  bool (__cdecl *event_subscribe)(void *memory, USim_Event_Kind kind, uint64_t id);
-  bool (__cdecl *poll_event)(USim_Recv_Channel channel, USim_Event *event);
-  bool (__cdecl *wait_event)(USim_Recv_Channel channel, USim_Event *event);
-  bool (__cdecl *add_event_watch)(void *memory, USim_Event_Kind kind, uint64_t id, void (__cdecl *callback)(USim_Event *event, void *ctx), void *ctx);
+  bool (*event_subscribe)(void *memory, USim_Event_Kind kind, uint64_t id);
+  bool (*poll_event)(USim_Recv_Channel channel, USim_Event *event);
+  bool (*wait_event)(USim_Recv_Channel channel, USim_Event *event);
+  bool (*add_event_watch)(void *memory, USim_Event_Kind kind, uint64_t id, void (*callback)(USim_Event *event, void *ctx), void *ctx);
   USim_Recv_Channel channel;
-  bool (__cdecl *_init)(void *memory, USim_API *api, const char* board_name, uint64_t usim_id, void **usim_mem);
-  bool (__cdecl *_update)(void *usim_mem);
-  void (__cdecl *_deinit)(void *usim_mem);
+  bool (*_init)(void *memory, USim_API *api, const char* board_name, uint64_t usim_id, void **usim_mem);
+  bool (*_update)(void *usim_mem);
+  void (*_deinit)(void *usim_mem);
   void *_library;
 } USim_API;
 

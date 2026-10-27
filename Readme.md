@@ -36,14 +36,19 @@ build
 
 ### Source structure
 
- - `simulator.odin`: contains main program for the simulator (only windows right now)
+ - `simulator.odin`: contains main program for the simulator
+ - `cmdline.odin`: contains command line parsing for core simulator
  - `sim_platform`: contains any platform specific code needed for main program (`simulator.odin` will use this when it is made)
  - `sim_peripherals`: contains all simulation for peripherals
- - `sim_peripherals/core_cm7.odin`: contains definitions for cm7 core registers
- - `sim_peripherals/stm32h723xx.odin`: contains definitions for stm32h723xx peripheral registers
+ - `mcu/stm32h723xx/core_cm7.odin`: contains definitions for cm7 core registers
+ - `mcu/stm32h723xx/stm32h723xx.odin`: contains definitions for stm32h723xx peripheral registers
+ - `usim`: contains the api for micro simulators
 
 Extra info:
  - `Changes.md`: lists changes that had to be made to make the simulated board code compile/run
+ - `example-board`: an example code for a board
+ - `example-usim`: example micro simulator code
+ - `codegen/ioctl_defs_linux.c`: small code to autogenerate `sim_platform_linux_ioctls.odin`
 
 ### Reasoning for the language we are going to use
 We are choosing Odin because:
