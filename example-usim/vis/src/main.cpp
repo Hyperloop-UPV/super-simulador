@@ -10,6 +10,12 @@
 #define TARGET_FPS 60
 #define TARGET_NS (1000000000 / TARGET_FPS)
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#define DLLEXPORT extern "C" __declspec(dllexport)
+#else
+#define DLLEXPORT extern "C"
+#endif
+
 // utility structure for realtime plot
 struct ScrollingBuffer {
   int MaxSize;
@@ -58,6 +64,7 @@ struct USim_Memory {
   ScrollingBuffer scrolling_data;
   float newest_time;
   float time_history;
+  bool show_implot_style_editor;
 };
 
 bool Init_Window(USim_Memory *mem)
@@ -131,10 +138,12 @@ bool Init_Window(USim_Memory *mem)
   mem->scrolling_data.Init();
   mem->scrolling_data.AddPoint(mem->newest_time + 1000, 0);
 
+  mem->show_implot_style_editor = true;
+
   return true;
 }
 
-extern "C" bool USim_init(void *memory, USim_API *api, const char *board_name, uint64_t usim_id, void **usim_rawmem)
+DLLEXPORT bool USim_init(void *memory, USim_API *api, const char *board_name, uint64_t usim_id, void **usim_rawmem)
 {
   (void)board_name;
   USim_Memory *usim_mem;
@@ -160,7 +169,7 @@ extern "C" bool USim_init(void *memory, USim_API *api, const char *board_name, u
   return true;
 }
 
-extern "C" bool USim_update(void *usim_rawmem)
+DLLEXPORT bool USim_update(void *usim_rawmem)
 {
   USim_Memory *mem = (USim_Memory*)usim_rawmem;
 
@@ -191,6 +200,12 @@ sdlPollEvent:
   ImGui_ImplSDL3_NewFrame();
   ImGui::NewFrame();
 
+  if(mem->show_implot_style_editor) {
+    ImGui::Begin("Style Editor (ImPlot)", &mem->show_implot_style_editor);
+    ImPlot::ShowStyleEditor();
+    ImGui::End();
+  }
+
   {
     static int counter = 0;
 
@@ -205,18 +220,16 @@ sdlPollEvent:
     ImGui::SameLine();
     ImGui::Text("counter = %d", counter);
 
-    float oldest = (float)mem->newest_time - mem->time_history;
-    float newest = oldest;
-
-    if(ImPlot::BeginPlot("##Scrolling", ImVec2(-1, 12*ImGui::GetTextLineHeight()))) {
-      ImPlot::SetupAxes("xlabel", "ylabel");
-      ImPlot::SetupAxisLimits(ImAxis_X1, oldest, newest, ImGuiCond_Always);
+    float oldest = mem->newest_time - mem->time_history;
+    if(ImPlot::BeginPlot("##Scrolling", ImVec2(-1, 20*ImGui::GetTextLineHeight()))) {
+      ImPlot::SetupAxes("time", "GPIO values");
+      ImPlot::SetupAxisLimits(ImAxis_X1, oldest, mem->newest_time, ImGuiCond_Always);
       ImPlot::SetupAxisLimits(ImAxis_Y1, 0, (double)0xFFFFU);
 
       ImPlotSpec spec;
       spec.Offset = mem->scrolling_data.Offset;
       spec.Stride = 2 * sizeof(float);
-      spec.FillAlpha = 0.5f;
+      spec.FillAlpha = 0.8f;
       ImPlot::PlotLine("board GPIO",
         &mem->scrolling_data.Data[0].x, &mem->scrolling_data.Data[0].y,
         mem->scrolling_data.Data.size(), spec
@@ -264,6 +277,7 @@ sdlPollEvent:
 
         float cur_time = (float)event.instant / 1000'000'000.0f;
         mem->newest_time = SDL_max(cur_time, mem->newest_time);
+        
         mem->scrolling_data.AddPoint(
           cur_time, (float)event.as.gpio_mod.value
         );
@@ -282,7 +296,7 @@ sdlPollEvent:
   return false;
 }
 
-extern "C" void USim_deinit(void *usim_rawmem)
+DLLEXPORT void USim_deinit(void *usim_rawmem)
 {
   USim_Memory *mem = (USim_Memory*)usim_rawmem;
 

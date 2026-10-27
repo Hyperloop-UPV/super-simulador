@@ -95,7 +95,12 @@ build_usims :: proc(opt: Build_Options) -> bool
 
   cur_dir, _ := os.get_working_directory(context.temp_allocator)
   if !os.exists("example-usim/vis/" + VIS_BUILD_SCRIPT) {
-    append(&cmd, "gcc", "build.c", "-o", VIS_BUILD_SCRIPT)
+    when ODIN_OS == .Windows {
+      // requires msvc compiler
+      append(&cmd, "cl", "build.c")
+    } else {
+      append(&cmd, "gcc", "build.c", "-o", VIS_BUILD_SCRIPT)
+    }
     run_command(cmd[:], "example-usim/vis") or_return
     clear(&cmd)
   }
@@ -152,6 +157,7 @@ build_board :: proc(opt: Build_Options) -> bool
     "-Wall", "-Wextra",
     "-I", "example-board/inc",
     "-Wl,--gc-sections",
+    "-fno-threadsafe-statics",
   )
 
   when ODIN_OS == .Windows {
