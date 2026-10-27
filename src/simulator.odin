@@ -160,7 +160,7 @@ load_usim_api :: proc(dllpath: string) -> usim.API
 
 /* --------------------------------------------- */
 
-USim_event_subscribe :: proc "cdecl"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id) -> bool
+USim_event_subscribe :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id) -> bool
 {
   memory := cast(^peripherals.Memory)rawmem
   context = memory.odin_ctx
@@ -172,7 +172,7 @@ USim_event_subscribe :: proc "cdecl"(rawmem: rawptr, kind: usim.Event_Kind, id: 
   return true
 }
 
-USim_poll_event :: proc "cdecl"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
+USim_poll_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
 {
   status: chan.Timeout_Status
   ch := chan.Chan(usim.Event, .Recv) {
@@ -183,7 +183,7 @@ USim_poll_event :: proc "cdecl"(channel: usim.Recv_Channel, event: ^usim.Event) 
   return status == .Ok
 }
 
-USim_wait_event :: proc "cdecl"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
+USim_wait_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
 {
   ok: bool
   ch := chan.Chan(usim.Event, .Recv) {
@@ -194,7 +194,7 @@ USim_wait_event :: proc "cdecl"(channel: usim.Recv_Channel, event: ^usim.Event) 
   return ok
 }
 
-USim_add_event_watch :: proc "cdecl"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Event_Watch_Callback_Proc, ctx: rawptr) -> bool
+USim_add_event_watch :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Event_Watch_Callback_Proc, ctx: rawptr) -> bool
 {
   memory := cast(^peripherals.Memory)rawmem
   context = memory.odin_ctx
