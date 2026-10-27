@@ -49,7 +49,7 @@ USim_update :: proc "c"(usim_rawmem: rawptr) -> (end_early: bool)
 
   event: usim.Event
   for usim_mem.api.poll_event(usim_mem.api.channel, &event) {
-    switch event.kind {
+    switch usim.Event_Kind(event.kind) {
       case .Quit: {}
       case .Count: {}
 

@@ -87,7 +87,41 @@ append_odin_options :: proc(cmd: ^[dynamic; 256]string, opt: Build_Options)
   }
 }
 
-build :: proc(opt: Build_Options) -> bool
+build_usims :: proc(opt: Build_Options) -> bool
+{
+  VIS_BUILD_SCRIPT :: "build" when ODIN_OS != .Windows else "build.exe"
+
+  cmd: [dynamic; 256]string
+
+  cur_dir, _ := os.get_working_directory(context.temp_allocator)
+  if !os.exists("example-usim/vis/" + VIS_BUILD_SCRIPT) {
+    append(&cmd, "gcc", "build.c", "-o", VIS_BUILD_SCRIPT)
+    run_command(cmd[:], "example-usim/vis") or_return
+    clear(&cmd)
+  }
+  append(&cmd, "example-usim/vis/" + VIS_BUILD_SCRIPT)
+  if !run_command(cmd[:], "example-usim/vis") {
+    os.change_directory(cur_dir)
+    return false
+  }
+  clear(&cmd)
+  os.change_directory(cur_dir)
+
+  append(&cmd,
+    "odin", "build", "example-usim/first",
+    "-out:bin/usim_example." + dynlib.LIBRARY_FILE_EXTENSION,
+    "-error-pos-style:unix",
+    "-collection:mcu=mcu",
+    "-build-mode:shared",
+  )
+  append_odin_options(&cmd, opt)
+  run_command(cmd[:]) or_return
+  clear(&cmd)
+
+  return true
+}
+
+build_sim :: proc(opt: Build_Options) -> bool
 {
   cmd: [dynamic; 256]string
   append(&cmd,
@@ -101,16 +135,12 @@ build :: proc(opt: Build_Options) -> bool
   run_command(cmd[:]) or_return
   clear(&cmd)
 
-  append(&cmd,
-    "odin", "build", "example-usim/first",
-    "-out:bin/usim_example." + dynlib.LIBRARY_FILE_EXTENSION,
-    "-error-pos-style:unix",
-    "-collection:mcu=mcu",
-    "-build-mode:shared",
-  )
-  append_odin_options(&cmd, opt)
-  run_command(cmd[:]) or_return
-  clear(&cmd)
+  return true
+}
+
+build_board :: proc(opt: Build_Options) -> bool
+{
+  cmd: [dynamic; 256]string
 
   append(&cmd, "gcc",
     "example-board/src/main.cpp",
@@ -140,6 +170,15 @@ build :: proc(opt: Build_Options) -> bool
 
   run_command(cmd[:]) or_return
   clear(&cmd)
+
+  return true
+}
+
+build :: proc(opt: Build_Options) -> bool
+{
+  build_sim(opt) or_return
+  build_board(opt) or_return
+  build_usims(opt) or_return
 
   return true
 }
@@ -411,12 +450,14 @@ C_struct_from_odin_struct :: proc(f: ^os.File, t: reflect.Type_Info_Struct, know
 
 do_usim_codegen :: proc() -> bool
 {
+  os.make_directory("usim")
   output_lib := "usim/usim.h"
   f, err := os.open(output_lib, {.Write, .Trunc, .Create})
   fmt.assertf(err == nil, "could not open '%s' file for writing: %v", output_lib, err)
   defer os.close(f)
 
   known_structs := []string{
+    "Event_Info",
     "Event",
     "GPIO_Mod",
     "API",
@@ -452,6 +493,12 @@ do_usim_codegen :: proc() -> bool
   C_struct_from_odin_struct(f, gpio_mod, known_structs, prefix = "USim_")
   write_string(f, "} USim_GPIO_Mod;\n\n")
 
+  write_string(f, "typedef union USim_Event_Info {\n")
+  event_info_named := type_info_of(usim.Event_Info).variant.(runtime.Type_Info_Named)
+  event_info := event_info_named.base.variant.(runtime.Type_Info_Struct)
+  C_struct_from_odin_struct(f, event_info, known_structs, prefix = "USim_")
+  write_string(f, "} USim_Event_Info;\n\n")
+
   write_string(f, "typedef struct USim_Event {\n")
   event_struct_named := type_info_of(usim.Event).variant.(runtime.Type_Info_Named)
   event_struct := event_struct_named.base.variant.(runtime.Type_Info_Struct)
@@ -477,8 +524,8 @@ do_usim_codegen :: proc() -> bool
 
 do_codegen :: proc() -> bool
 {
-  do_linux_syscalls_codegen() or_return
   do_usim_codegen() or_return
+  do_linux_syscalls_codegen() or_return
 
   return true
 }
@@ -507,7 +554,6 @@ main :: proc()
     ok := run_command({
       "sim",
       "--cfg", "cfg.json",
-      "--max-iterations", "1000_000",
     })
     if !ok {
       os.exit(1)

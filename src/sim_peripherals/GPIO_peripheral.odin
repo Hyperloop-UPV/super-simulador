@@ -64,10 +64,9 @@ GPIO_handler :: proc(rawctx, this_rawctx: rawptr)
 
   if is_pin_on_prev != gpio.is_pin_on {
     event: usim.Event
-    event.kind = .GPIO_Modified
     event.as.gpio_mod.gpio_char = gpio.letter
     event.as.gpio_mod.value = gpio.gpio.BSRR
-    enqueue_event(mem, &event)
+    enqueue_event(mem, &event, .GPIO_Modified)
 
     //buf: [16]u8
     //idx: u8 = 0

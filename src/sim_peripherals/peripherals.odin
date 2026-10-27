@@ -385,6 +385,8 @@ Memory :: struct {
   base: rawptr,
   simArray: []Sim_Data,
 
+  start_tick: time.Tick,
+
   /*
   Event queue channels for usim, one per attached usim
   */
@@ -409,23 +411,27 @@ Memory :: struct {
 /* see Memory.subscibed_events */
 #assert(usim.MAX_USIMS <= 64)
 
-enqueue_event :: proc(memory: ^Memory, event: ^usim.Event)
+enqueue_event :: proc(memory: ^Memory, event: ^usim.Event, event_kind: usim.Event_Kind)
 {
+  kind := u32(event_kind)
+
   subs: u64
-  watch_data, found := memory.event_watch[event.kind]
+  watch_data, found := memory.event_watch[event_kind]
   if found {
     for wd in watch_data {
       wd.callback(event, wd.ctx)
     }
   }
 
-  subs, found = memory.subscribed_events[event.kind]
+  subs, found = memory.subscribed_events[event_kind]
   if !found {
     // no subscribers to this specific event
     return
   }
 
+  event.instant = i64(time.tick_since(memory.start_tick))
   event.board_name = memory.board_name
+  event.kind = kind
 
   for subs != 0 {
     idx := intrinsics.count_trailing_zeros(subs)

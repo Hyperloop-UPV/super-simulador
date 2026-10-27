@@ -160,7 +160,7 @@ load_usim_api :: proc(dllpath: string) -> usim.API
 
 /* --------------------------------------------- */
 
-USim_event_subscribe :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id) -> bool
+USim_event_subscribe :: proc "cdecl"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id) -> bool
 {
   memory := cast(^peripherals.Memory)rawmem
   context = memory.odin_ctx
@@ -172,7 +172,7 @@ USim_event_subscribe :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim
   return true
 }
 
-USim_poll_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
+USim_poll_event :: proc "cdecl"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
 {
   status: chan.Timeout_Status
   ch := chan.Chan(usim.Event, .Recv) {
@@ -183,7 +183,7 @@ USim_poll_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> b
   return status == .Ok
 }
 
-USim_wait_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
+USim_wait_event :: proc "cdecl"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
 {
   ok: bool
   ch := chan.Chan(usim.Event, .Recv) {
@@ -194,7 +194,7 @@ USim_wait_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> b
   return ok
 }
 
-USim_add_event_watch :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Event_Watch_Callback_Proc, ctx: rawptr) -> bool
+USim_add_event_watch :: proc "cdecl"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Event_Watch_Callback_Proc, ctx: rawptr) -> bool
 {
   memory := cast(^peripherals.Memory)rawmem
   context = memory.odin_ctx
@@ -220,7 +220,7 @@ USim_add_event_watch :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim
 
 /* --------------------------------------------- */
 
-create_board :: proc(dllpath: string, channels: []chan.Chan(usim.Event, .Both)) -> ^peripherals.Memory
+create_board :: proc(dllpath: string, channels: []chan.Chan(usim.Event, .Both), start_tick: time.Tick) -> ^peripherals.Memory
 {
   // setup allocator for peripheral internal memory.
   // 1 GB reserved but not committed size (virtual memory)
@@ -277,6 +277,8 @@ create_board :: proc(dllpath: string, channels: []chan.Chan(usim.Event, .Both)) 
   }
   reserve(&memory.subscribed_events, usim.Event_Kind.Count)
   reserve(&memory.event_watch, usim.Event_Kind.Count)
+
+  memory.start_tick = start_tick
 
   return memory
 }
@@ -553,8 +555,9 @@ main :: proc()
     }
   }
 
+  start_tick := time.tick_now()
   for board, board_idx in opt.board {
-    memories[board_idx] = create_board(board, channels)
+    memories[board_idx] = create_board(board, channels, start_tick)
   }
 
   global_should_quit: bool

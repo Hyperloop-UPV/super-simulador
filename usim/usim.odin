@@ -44,12 +44,17 @@ GPIO_Mod :: struct {
   value: u32,
 }
 
+Event_Info :: struct #raw_union {
+  gpio_mod: GPIO_Mod,
+}
+
 Event :: struct {
-  kind: Event_Kind,
+  /* This is essentially an Event_Kind but you cannot specify enum size in C, so it must be an u32 */
+  kind: u32,
+  /* the instant when the event was enqueued, in nanoseconds, since the start of the simulation */
+  instant: i64,
   board_name: cstring,
-  as: struct #raw_union {
-    gpio_mod: GPIO_Mod,
-  },
+  as: Event_Info,
 }
 
 /*
@@ -66,7 +71,7 @@ Returns:
 
 If this returns false, it won't be called again for any other boards
 */
-Init_Proc :: #type proc "c"(memory: rawptr, api: ^API, board_name: cstring, usim_id: Id, usim_mem: ^rawptr) -> bool
+Init_Proc :: #type proc "cdecl"(memory: rawptr, api: ^API, board_name: cstring, usim_id: Id, usim_mem: ^rawptr) -> bool
 
 /*
 Procedure that will be called in a loop until `sim_is_done` is true.
@@ -76,7 +81,7 @@ Arguments:
 Returns:
  - `end_early`: if end_early is true, `Update_Proc` will stop being called and `Deinit_Proc` will be called once
  */
-Update_Proc :: #type proc "c"(usim_mem: rawptr) -> (end_early: bool)
+Update_Proc :: #type proc "cdecl"(usim_mem: rawptr) -> (end_early: bool)
 
 /*
 Procedure that will be called after the call to `Update_Proc` with `sim_is_done` == true or after the call to `Update_Proc` with `end_early` == true
@@ -84,7 +89,7 @@ Procedure that will be called after the call to `Update_Proc` with `sim_is_done`
 Arguments:
  - `usim_mem`: rawptr (same as void*) to memory recieved from `Init_Proc`
 */
-Deinit_Proc :: #type proc "c"(usim_mem: rawptr)
+Deinit_Proc :: #type proc "cdecl"(usim_mem: rawptr)
 
 /* ----------------------------------------- */
 /* WARNING: Only call the following procedures from the main thread of the usim */
@@ -99,7 +104,7 @@ Arguments:
 Returns:
  - if the operation succeeded or not
 */
-Event_Subscribe_Proc :: #type proc "c"(memory: rawptr, kind: Event_Kind, id: Id) -> bool
+Event_Subscribe_Proc :: #type proc "cdecl"(memory: rawptr, kind: Event_Kind, id: Id) -> bool
 
 /*
 Procedure to call in `Update_Proc` to check for any new events in this usim's event queue
@@ -109,7 +114,7 @@ Arguments:
 Returns:
  - if there was an event
 */
-Poll_Event_Proc :: #type proc "c"(channel: Recv_Channel, event: ^Event) -> bool
+Poll_Event_Proc :: #type proc "cdecl"(channel: Recv_Channel, event: ^Event) -> bool
 
 /*
 Procedure to call in `Update_Proc` to wait for the next event in this usim's event queue
@@ -119,10 +124,10 @@ Arguments:
 Returns:
  - if there was an error while trying to gather the newest event
 */
-Wait_Event_Proc :: #type proc "c"(channel: Recv_Channel, event: ^Event) -> bool
+Wait_Event_Proc :: #type proc "cdecl"(channel: Recv_Channel, event: ^Event) -> bool
 
 /* callback type for `Add_Event_Watch_Proc` */
-Event_Watch_Callback_Proc :: #type proc "c"(event: ^Event, ctx: rawptr)
+Event_Watch_Callback_Proc :: #type proc "cdecl"(event: ^Event, ctx: rawptr)
 
 /*
 Procedure to call in `Init_Proc` to handle events of a specific kind in a callback.
@@ -139,7 +144,7 @@ Arguments:
 Returns:
  - if there was an error while trying to add the callback
 */
-Add_Event_Watch_Proc :: #type proc "c"( \
+Add_Event_Watch_Proc :: #type proc "cdecl"( \
   memory: rawptr, \
   kind: Event_Kind, \
   id: Id, \

@@ -7,7 +7,7 @@
 
   "usims": [
     {
-      "dll": "bin/usim_example",
+      "dll": "example-usim/vis/bin/usim-vis",
       "attached_boards": [
         "test"
       ]
