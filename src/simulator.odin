@@ -319,12 +319,11 @@ sim_thread_proc :: proc(rawdata: rawptr)
 
   ITERATION_TIME :: 40*time.Microsecond
 
-  for {
-    start := time.now()
-    spall._buffer_begin("Peripheral page write watch")
+  for spall_it := 0;; spall_it = (spall_it + 1) % 1024 {
+    dont_skip_spall := spall_it == 0
+    start_tick := time.tick_now()
 
     if data.shouldQuit {
-      spall._buffer_end()
       break
     }
 
@@ -337,12 +336,13 @@ sim_thread_proc :: proc(rawdata: rawptr)
     )
 
     if !ok {
-      spall._buffer_end()
       continue
     }
 
     if pageCount > 0 {
-      spall._buffer_begin("Peripheral handle page writes")
+      if dont_skip_spall {
+        spall._buffer_begin("Peripheral handle page writes")
+      }
 
       for idx: uint = 0; idx < pageCount; idx += 1 {
         pageAddr: rawptr = memory.writeWatchRequestMem[idx]
@@ -353,12 +353,12 @@ sim_thread_proc :: proc(rawdata: rawptr)
         memory.handlers[pageIdx](memory, data.simArray[pageIdx].this_ctx)
       }
 
-      spall._buffer_end() // "Peripheral handle page writes"
+      if dont_skip_spall {
+        spall._buffer_end() // "Peripheral handle page writes"
+      }
     }
 
-    spall._buffer_end() // "Peripheral page write watch"
-
-    diff := time.diff(start, time.now())
+    diff := time.tick_diff(start_tick, time.tick_now())
     if diff < ITERATION_TIME {
       time.sleep(ITERATION_TIME - diff)
     }
@@ -383,23 +383,34 @@ board_thread_proc :: proc(rawdata: rawptr)
   * the stepping is done by calling update() on the simulated board
   */
 
-  it := 0
-  for {
-    spall._buffer_begin("Board iteration")
-    spall._buffer_begin("Peripheral update")
+  ITERATION_TIME :: 20*time.Microsecond
 
+  it := 0
+  for spall_it := 0;; spall_it = (spall_it + 1) % 1024 {
+    dont_skip_spall := spall_it == 0
+    start_tick := time.tick_now()
+
+    if dont_skip_spall {
+      spall._buffer_begin("Peripheral update")
+    }
+    
     for periph in memory.simArray {
       if periph.step != peripherals.Stub_step {
         //fmt.printfln("Peripheral %v step", periph)
         periph.step(memory, periph.this_ctx, data.step_time)
       }
     }
-
-    spall._buffer_end() // "Peripheral update"
+    
+    if dont_skip_spall {
+      spall._buffer_end() // "Peripheral update"
+      spall._buffer_begin("Board iteration")
+    }
 
     memory.board_api.update()
 
-    spall._buffer_end() // "Board iteration"
+    if dont_skip_spall {
+      spall._buffer_end() // "Board iteration"
+    }
 
     it += 1
     if (data.max_iterations != 0) && (it > data.max_iterations) {
@@ -411,6 +422,10 @@ board_thread_proc :: proc(rawdata: rawptr)
     }
 
     time.sleep(10*time.Microsecond)
+    diff := time.tick_diff(start_tick, time.tick_now())
+    if diff < ITERATION_TIME {
+      time.sleep(ITERATION_TIME - diff)
+    }
   }
 
   // wait until sim_thread quits 'voluntarily'

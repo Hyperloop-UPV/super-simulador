@@ -37,7 +37,7 @@ GPIO_handler :: proc(rawctx, this_rawctx: rawptr)
 
   is_pin_on_prev := gpio.is_pin_on
 
-  rcc_bit := u32(rcc.AHB4ENR >> u32(gpio.letter - 'A'))
+  rcc_bit := u32(rcc.AHB4ENR >> u32(gpio.letter - 'A')) & 1
   if rcc_bit == 1 {
     for pin: u32 = 0; pin < 16; pin += 1 {
       mode := (gpio.gpio.MODER >> (pin * 2)) & 0b11

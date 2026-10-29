@@ -98,7 +98,7 @@ int main(int argc, char **argv)
   };
 
   if(!VL_CCompile(&cmd, &ctx)) {
-    VL_Log(VL_ERROR, "Could not compile main.c");
+    VL_Log(VL_ERROR, "Could not compile main.cpp");
     return 1;
   }
 

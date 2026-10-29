@@ -61,7 +61,8 @@ struct USim_Memory {
 
   ImVec4 clear_color;
 
-  ScrollingBuffer scrolling_data;
+  // ['A','K'] (both included)
+  ScrollingBuffer scrolling_gpio_data['K' - 'A' + 1];
   float newest_time;
   float time_history;
   bool show_implot_style_editor;
@@ -135,8 +136,29 @@ bool Init_Window(USim_Memory *mem)
   mem->time_history = 80.0f;
   mem->newest_time = (float)SDL_GetTicksNS() / 1000'000'000.0f;
 
-  mem->scrolling_data.Init();
-  mem->scrolling_data.AddPoint(mem->newest_time + 1000, 0);
+  mem->scrolling_gpio_data['A' - 'A'].Init();
+  mem->scrolling_gpio_data['B' - 'A'].Init();
+  mem->scrolling_gpio_data['C' - 'A'].Init();
+  mem->scrolling_gpio_data['D' - 'A'].Init();
+  mem->scrolling_gpio_data['E' - 'A'].Init();
+  mem->scrolling_gpio_data['F' - 'A'].Init();
+  mem->scrolling_gpio_data['G' - 'A'].Init();
+  mem->scrolling_gpio_data['H' - 'A'].Init();
+  // there is no gpio['I']
+  mem->scrolling_gpio_data['J' - 'A'].Init();
+  mem->scrolling_gpio_data['K' - 'A'].Init();
+
+  mem->scrolling_gpio_data['A' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['B' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['C' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['D' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['E' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['F' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['G' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['H' - 'A'].AddPoint(mem->newest_time, 0);
+  // there is no gpio['I']
+  mem->scrolling_gpio_data['J' - 'A'].AddPoint(mem->newest_time, 0);
+  mem->scrolling_gpio_data['K' - 'A'].AddPoint(mem->newest_time, 0);
 
   mem->show_implot_style_editor = true;
 
@@ -167,6 +189,13 @@ DLLEXPORT bool USim_init(void *memory, USim_API *api, const char *board_name, ui
 
   *usim_rawmem = usim_mem;
   return true;
+}
+
+/* assumes spec is already setup */
+inline void plot_gpio_line(const char *title, ImPlotSpec *spec, ScrollingBuffer *buf)
+{
+  spec->Offset = buf->Offset;
+  ImPlot::PlotLine(title, &buf->Data[0].x, &buf->Data[0].y, buf->Data.size(), *spec);
 }
 
 DLLEXPORT bool USim_update(void *usim_rawmem)
@@ -227,13 +256,20 @@ sdlPollEvent:
       ImPlot::SetupAxisLimits(ImAxis_Y1, 0, (double)0xFFFFU);
 
       ImPlotSpec spec;
-      spec.Offset = mem->scrolling_data.Offset;
       spec.Stride = 2 * sizeof(float);
       spec.FillAlpha = 0.8f;
-      ImPlot::PlotLine("board GPIO",
-        &mem->scrolling_data.Data[0].x, &mem->scrolling_data.Data[0].y,
-        mem->scrolling_data.Data.size(), spec
-      );
+
+      plot_gpio_line("GPIOA", &spec, &mem->scrolling_gpio_data['A' - 'A']);
+      plot_gpio_line("GPIOB", &spec, &mem->scrolling_gpio_data['B' - 'A']);
+      plot_gpio_line("GPIOC", &spec, &mem->scrolling_gpio_data['C' - 'A']);
+      plot_gpio_line("GPIOD", &spec, &mem->scrolling_gpio_data['D' - 'A']);
+      plot_gpio_line("GPIOE", &spec, &mem->scrolling_gpio_data['E' - 'A']);
+      plot_gpio_line("GPIOF", &spec, &mem->scrolling_gpio_data['F' - 'A']);
+      plot_gpio_line("GPIOG", &spec, &mem->scrolling_gpio_data['G' - 'A']);
+      plot_gpio_line("GPIOH", &spec, &mem->scrolling_gpio_data['H' - 'A']);
+      // there is no 'I'
+      plot_gpio_line("GPIOJ", &spec, &mem->scrolling_gpio_data['J' - 'A']);
+      plot_gpio_line("GPIOK", &spec, &mem->scrolling_gpio_data['K' - 'A']);
 
       ImPlot::EndPlot();
     }
@@ -277,8 +313,8 @@ sdlPollEvent:
 
         float cur_time = (float)event.instant / 1000'000'000.0f;
         mem->newest_time = SDL_max(cur_time, mem->newest_time);
-        
-        mem->scrolling_data.AddPoint(
+
+        mem->scrolling_gpio_data[event.as.gpio_mod.gpio_char - 'A'].AddPoint(
           cur_time, (float)event.as.gpio_mod.value
         );
       }

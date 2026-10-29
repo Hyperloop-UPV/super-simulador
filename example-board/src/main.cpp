@@ -33,7 +33,16 @@ extern "C" void Board_init(void *mem)
   //static constexpr uint32_t pin = 0;
   //static constexpr uint32_t portletter = 'B';
 
+  start_gpio_allpins(GPIOA, 'A');
   start_gpio_allpins(GPIOB, 'B');
+  start_gpio_allpins(GPIOC, 'C');
+  start_gpio_allpins(GPIOD, 'D');
+  start_gpio_allpins(GPIOE, 'E');
+  start_gpio_allpins(GPIOF, 'F');
+  start_gpio_allpins(GPIOG, 'G');
+  start_gpio_allpins(GPIOH, 'H');
+  start_gpio_allpins(GPIOJ, 'J');
+  start_gpio_allpins(GPIOK, 'K');
   //RCC->AHB4ENR |= 1 << (portletter - 'A');
   //GPIOB->MODER |= 1 << (pin * 2);
 
@@ -103,9 +112,30 @@ void toggle_led_pattern(GPIO_TypeDef *gpio, uint32_t *seed)
 
 extern "C" void SysTick_Handler(void)
 {
-  static uint32_t seed0 = RNG_seed_parkmiller(120241);
+  static uint32_t seeds['K' - 'A' + 1] = {
+    120241,
+    120242,
+    120243,
+    120244,
+    120245,
+    120246,
+    120247,
+    120248,
+    120249,
+    120250,
+    120251,
+  };
 
-  toggle_led_pattern(GPIOB, &seed0);
+  toggle_led_pattern(GPIOA, &seeds['A' - 'A']);
+  toggle_led_pattern(GPIOB, &seeds['B' - 'A']);
+  toggle_led_pattern(GPIOC, &seeds['C' - 'A']);
+  toggle_led_pattern(GPIOD, &seeds['D' - 'A']);
+  toggle_led_pattern(GPIOE, &seeds['E' - 'A']);
+  toggle_led_pattern(GPIOF, &seeds['F' - 'A']);
+  toggle_led_pattern(GPIOG, &seeds['G' - 'A']);
+  toggle_led_pattern(GPIOH, &seeds['H' - 'A']);
+  toggle_led_pattern(GPIOJ, &seeds['J' - 'A']);
+  toggle_led_pattern(GPIOK, &seeds['K' - 'A']);
   //toggle_led();
 }
 
