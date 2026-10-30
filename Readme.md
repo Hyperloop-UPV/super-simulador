@@ -45,10 +45,13 @@ build
  - `usim`: contains the api for micro simulators
 
 Extra info:
+ - `build.odin`: odin build script for the simulator
+ - `cfg.json`: example, working config for running the simulator
  - `Changes.md`: lists changes that had to be made to make the simulated board code compile/run
+ - `codegen/ioctl_defs_linux.c`: small code to autogenerate `sim_platform_linux_ioctls.odin`
  - `example-board`: an example code for a board
  - `example-usim`: example micro simulator code
- - `codegen/ioctl_defs_linux.c`: small code to autogenerate `sim_platform_linux_ioctls.odin`
+ - `ols.json`: odin language server config, to specify any collections used
 
 ### Reasoning for the language we are going to use
 We are choosing Odin because:
