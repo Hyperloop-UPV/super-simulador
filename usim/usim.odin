@@ -51,6 +51,7 @@ Event_Info :: struct #raw_union {
 Event :: struct {
   /* This is essentially an Event_Kind but you cannot specify enum size in C, so it must be an u32 */
   kind: u32,
+  padding: [4]u8,
   /* the instant when the event was enqueued, in nanoseconds, since the start of the simulation */
   instant: i64,
   board_name: cstring,
@@ -92,7 +93,7 @@ Arguments:
 Deinit_Proc :: #type proc "c"(usim_mem: rawptr)
 
 /* ----------------------------------------- */
-/* WARNING: Only call the following procedures from the main thread of the usim */
+/* WARNING: Unless advised to do otherwise, only call the following procedures from the main thread of the usim */
 
 /*
 Procedure to call in `Init_Proc` to subscribe to an event kind
@@ -104,12 +105,13 @@ Arguments:
 Returns:
  - if the operation succeeded or not
 */
-Event_Subscribe_Proc :: #type proc "c"(memory: rawptr, kind: Event_Kind, id: Id) -> bool
+Subscribe_Event_Proc :: #type proc "c"(memory: rawptr, kind: Event_Kind, id: Id) -> bool
 
 /*
 Procedure to call in `Update_Proc` to check for any new events in this usim's event queue
 
 Arguments:
+ - `channel`: the channel where to poll events from (found in `api.channel`)
  - `event`: will be filled with the newest event if there was any
 Returns:
  - if there was an event
@@ -120,14 +122,15 @@ Poll_Event_Proc :: #type proc "c"(channel: Recv_Channel, event: ^Event) -> bool
 Procedure to call in `Update_Proc` to wait for the next event in this usim's event queue
 
 Arguments:
+ - `channel`: the channel where to wait for events from (found in `api.channel`)
  - `event`: will be filled in with the newest event if there was any
 Returns:
  - if there was an error while trying to gather the newest event
 */
 Wait_Event_Proc :: #type proc "c"(channel: Recv_Channel, event: ^Event) -> bool
 
-/* callback type for `Add_Event_Watch_Proc` */
-Event_Watch_Callback_Proc :: #type proc "c"(event: ^Event, ctx: rawptr)
+/* callback type for `Add_Watch_Event_Proc` */
+Watch_Event_Proc_Callback :: #type proc "c"(event: ^Event, ctx: rawptr)
 
 /*
 Procedure to call in `Init_Proc` to handle events of a specific kind in a callback.
@@ -144,21 +147,21 @@ Arguments:
 Returns:
  - if there was an error while trying to add the callback
 */
-Add_Event_Watch_Proc :: #type proc "c"( \
+Add_Watch_Event_Proc :: #type proc "c"( \
   memory: rawptr, \
   kind: Event_Kind, \
   id: Id, \
-  callback: Event_Watch_Callback_Proc, \
+  callback: Watch_Event_Proc_Callback, \
   ctx: rawptr, \
 ) -> bool
 
 API :: struct {
   /* api from core sim to usim */
 
-  event_subscribe: Event_Subscribe_Proc,
+  subscribe_event: Subscribe_Event_Proc,
   poll_event: Poll_Event_Proc,
   wait_event: Wait_Event_Proc,
-  add_event_watch: Add_Event_Watch_Proc,
+  add_watch_event: Add_Watch_Event_Proc,
 
   /*
   Recieve channel for usim, used internally in `poll_event` and `wait_event`

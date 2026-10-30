@@ -181,7 +181,7 @@ DLLEXPORT bool USim_init(void *memory, USim_API *api, const char *board_name, ui
     usim_mem = *((USim_Memory**)usim_rawmem);
   }
 
-  bool ok = api->event_subscribe(memory, Event_Kind_GPIO_Modified, usim_id);
+  bool ok = api->subscribe_event(memory, Event_Kind_GPIO_Modified, usim_id);
   if(!ok) {
     SDL_Log("Error: Could not subscribe to core simulator event");
     return false;
@@ -304,7 +304,6 @@ sdlPollEvent:
       case Event_Kind_Count: break;
 
       case Event_Kind_GPIO_Modified: {
-
         SDL_Log("GPIO_%c modified in %s board. New value: 0x%04x\n",
           event.as.gpio_mod.gpio_char,
           event.board_name,

@@ -160,7 +160,7 @@ load_usim_api :: proc(dllpath: string) -> usim.API
 
 /* --------------------------------------------- */
 
-USim_event_subscribe :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id) -> bool
+USim_subscribe_event :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id) -> bool
 {
   memory := cast(^peripherals.Memory)rawmem
   context = memory.odin_ctx
@@ -198,7 +198,7 @@ USim_wait_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> b
   return ok
 }
 
-USim_add_event_watch :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Event_Watch_Callback_Proc, ctx: rawptr) -> bool
+USim_add_watch_event :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Watch_Event_Proc_Callback, ctx: rawptr) -> bool
 {
   memory := cast(^peripherals.Memory)rawmem
   context = memory.odin_ctx
@@ -439,10 +439,10 @@ usim_thread_proc :: proc(rawdata: rawptr)
   data := cast(^USim_Thread_Data)rawdata
 
   data.usim_api = load_usim_api(data.usim_dll)
-  data.usim_api.event_subscribe = USim_event_subscribe
+  data.usim_api.subscribe_event = USim_subscribe_event
   data.usim_api.poll_event = USim_poll_event
   data.usim_api.wait_event = USim_wait_event
-  data.usim_api.add_event_watch = USim_add_event_watch
+  data.usim_api.add_watch_event = USim_add_watch_event
   data.usim_api.channel.impl = data.channel.impl
 
   ctx: rawptr

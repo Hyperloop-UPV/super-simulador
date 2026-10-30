@@ -31,7 +31,7 @@ USim_init :: proc "c"(memory: rawptr, api: ^usim.API, board_name: cstring, usim_
   }
   context = usim_mem.odin_ctx
 
-  ok := api.event_subscribe(memory, .GPIO_Modified, usim_id)
+  ok := api.subscribe_event(memory, .GPIO_Modified, usim_id)
   if !ok {
     fmt.eprintfln("Could not subscribe to core simulator event")
     return false

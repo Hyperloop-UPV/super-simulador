@@ -24,6 +24,7 @@ typedef union USim_Event_Info {
 
 typedef struct USim_Event {
   uint32_t kind;
+  uint8_t padding[4];
   int64_t instant;
   const char* board_name;
   USim_Event_Info as;
@@ -34,10 +35,10 @@ typedef struct USim_Recv_Channel {
 } USim_Recv_Channel;
 
 typedef struct USim_API {
-  bool (*event_subscribe)(void *memory, USim_Event_Kind kind, uint64_t id);
+  bool (*subscribe_event)(void *memory, USim_Event_Kind kind, uint64_t id);
   bool (*poll_event)(USim_Recv_Channel channel, USim_Event *event);
   bool (*wait_event)(USim_Recv_Channel channel, USim_Event *event);
-  bool (*add_event_watch)(void *memory, USim_Event_Kind kind, uint64_t id, void (*callback)(USim_Event *event, void *ctx), void *ctx);
+  bool (*add_watch_event)(void *memory, USim_Event_Kind kind, uint64_t id, void (*callback)(USim_Event *event, void *ctx), void *ctx);
   USim_Recv_Channel channel;
   bool (*_init)(void *memory, USim_API *api, const char* board_name, uint64_t usim_id, void **usim_mem);
   bool (*_update)(void *usim_mem);

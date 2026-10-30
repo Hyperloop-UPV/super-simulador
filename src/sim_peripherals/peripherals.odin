@@ -70,7 +70,7 @@ Board_API :: struct {
 
 USim_Event_Watch_Key :: usim.Event_Kind
 USim_Event_Watch_Data :: struct {
-  callback: usim.Event_Watch_Callback_Proc,
+  callback: usim.Watch_Event_Proc_Callback,
   ctx: rawptr,
 }
 
