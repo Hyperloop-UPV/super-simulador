@@ -63,7 +63,10 @@ USim_Thread_Data :: struct {
   usim_dll: string,
   usim_api: usim.API,
   global_should_quit: ^bool,
-  channel: chan.Chan(usim.Event, .Recv),
+  /* we're using Raw_Chan instead of Chan(usim.Event, .Recv)
+   * because we're sending it to C api
+   */
+  channel: ^chan.Raw_Chan,
   usim_id: usim.Id,
 }
 
@@ -175,11 +178,9 @@ USim_subscribe_event :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim
 USim_poll_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
 {
   status: chan.Timeout_Status
-  ch := chan.Chan(usim.Event, .Recv) {
-    impl = cast(^chan.Raw_Chan)channel.impl,
-  }
+  ch := cast(^chan.Raw_Chan)channel
 
-  event^, status = chan.recv_with_timeout(ch, time.Duration(0))
+  status = chan.recv_raw_with_timeout(ch, event, time.Duration(0))
   // temporary condition for debugging
   if status == .Ok {
     return true
@@ -189,13 +190,8 @@ USim_poll_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> b
 
 USim_wait_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool
 {
-  ok: bool
-  ch := chan.Chan(usim.Event, .Recv) {
-    impl = cast(^chan.Raw_Chan)channel.impl,
-  }
-
-  event^, ok = chan.recv(ch)
-  return ok
+  ch := cast(^chan.Raw_Chan)channel
+  return chan.recv_raw(ch, event)
 }
 
 USim_add_watch_event :: proc "c"(rawmem: rawptr, kind: usim.Event_Kind, id: usim.Id, callback: usim.Watch_Event_Proc_Callback, ctx: rawptr) -> bool
@@ -443,7 +439,7 @@ usim_thread_proc :: proc(rawdata: rawptr)
   data.usim_api.poll_event = USim_poll_event
   data.usim_api.wait_event = USim_wait_event
   data.usim_api.add_watch_event = USim_add_watch_event
-  data.usim_api.channel.impl = data.channel.impl
+  data.usim_api.channel = usim.Recv_Channel(data.channel)
 
   ctx: rawptr
   init_ok: bool = true
@@ -468,6 +464,7 @@ usim_thread_proc :: proc(rawdata: rawptr)
   data.usim_api._deinit(ctx)
 
   dynlib.unload_library(data.usim_api._library)
+  chan.close(data.channel)
 }
 
 /* --------------------------------------------- */
@@ -588,7 +585,7 @@ main :: proc()
       global_should_quit = &global_should_quit,
       usim_id = usim.Id(usim_idx),
     }
-    td.channel = chan.as_recv(channels[usim_idx])
+    td.channel = chan.as_recv(channels[usim_idx]).impl
 
     td.attached_memories = make([]^peripherals.Memory, len(u.attached_boards))
     for attached, mem_idx in u.attached_boards {

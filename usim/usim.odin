@@ -27,9 +27,7 @@ Provides a way to distinguish between usims to the core simulator
 */
 Id :: distinct u64
 
-Recv_Channel :: struct {
-  impl: rawptr,
-}
+Recv_Channel :: distinct rawptr
 
 Event_Kind :: enum u32 {
   /* when the simulator is done, it will enqueue a Quit event */
