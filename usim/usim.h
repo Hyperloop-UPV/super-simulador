@@ -30,16 +30,14 @@ typedef struct USim_Event {
   USim_Event_Info as;
 } USim_Event;
 
-typedef struct USim_Recv_Channel {
-  void *impl;
-} USim_Recv_Channel;
+typedef void* USim_Recv;
 
 typedef struct USim_API {
   bool (*subscribe_event)(void *memory, USim_Event_Kind kind, uint64_t id);
-  bool (*poll_event)(USim_Recv_Channel channel, USim_Event *event);
-  bool (*wait_event)(USim_Recv_Channel channel, USim_Event *event);
+  bool (*poll_event)(void *channel, USim_Event *event);
+  bool (*wait_event)(void *channel, USim_Event *event);
   bool (*add_watch_event)(void *memory, USim_Event_Kind kind, uint64_t id, void (*callback)(USim_Event *event, void *ctx), void *ctx);
-  USim_Recv_Channel channel;
+  void *channel;
   bool (*_init)(void *memory, USim_API *api, const char* board_name, uint64_t usim_id, void **usim_mem);
   bool (*_update)(void *usim_mem);
   void (*_deinit)(void *usim_mem);

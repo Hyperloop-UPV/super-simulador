@@ -511,11 +511,7 @@ do_usim_codegen :: proc() -> bool
   C_struct_from_odin_struct(f, event_struct, known_structs, prefix = "USim_")
   write_string(f, "} USim_Event;\n\n")
 
-  write_string(f, "typedef struct USim_Recv_Channel {\n")
-  recv_channel_named := type_info_of(usim.Recv_Channel).variant.(runtime.Type_Info_Named)
-  recv_channel := recv_channel_named.base.variant.(runtime.Type_Info_Struct)
-  C_struct_from_odin_struct(f, recv_channel, known_structs, prefix = "USim_")
-  write_string(f, "} USim_Recv_Channel;\n\n")
+  write_string(f, "typedef void* USim_Recv;\n\n")
 
   write_string(f, "typedef struct USim_API {\n")
   api_struct_named := type_info_of(usim.API).variant.(runtime.Type_Info_Named)
