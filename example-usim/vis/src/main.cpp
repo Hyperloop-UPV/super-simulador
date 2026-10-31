@@ -304,12 +304,6 @@ sdlPollEvent:
       case Event_Kind_Count: break;
 
       case Event_Kind_GPIO_Modified: {
-        SDL_Log("GPIO_%c modified in %s board. New value: 0x%04x\n",
-          event.as.gpio_mod.gpio_char,
-          event.board_name,
-          event.as.gpio_mod.value
-        );
-
         float cur_time = (float)event.instant / 1000'000'000.0f;
         mem->newest_time = SDL_max(cur_time, mem->newest_time);
 

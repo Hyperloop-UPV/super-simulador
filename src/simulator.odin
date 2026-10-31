@@ -181,11 +181,7 @@ USim_poll_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> b
   ch := cast(^chan.Raw_Chan)channel
 
   status = chan.recv_raw_with_timeout(ch, event, time.Duration(0))
-  // temporary condition for debugging
-  if status == .Ok {
-    return true
-  }
-  return false
+  return status == .Ok
 }
 
 USim_wait_event :: proc "c"(channel: usim.Recv_Channel, event: ^usim.Event) -> bool

@@ -415,6 +415,10 @@ enqueue_event :: proc(memory: ^Memory, event: ^usim.Event, event_kind: usim.Even
 {
   kind := u32(event_kind)
 
+  event.instant = i64(time.tick_since(memory.start_tick))
+  event.board_name = memory.board_name
+  event.kind = kind
+
   subs: u64
   watch_data, found := memory.event_watch[event_kind]
   if found {
@@ -428,10 +432,6 @@ enqueue_event :: proc(memory: ^Memory, event: ^usim.Event, event_kind: usim.Even
     // no subscribers to this specific event
     return
   }
-
-  event.instant = i64(time.tick_since(memory.start_tick))
-  event.board_name = memory.board_name
-  event.kind = kind
 
   for subs != 0 {
     idx := intrinsics.count_trailing_zeros(subs)
